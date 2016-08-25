@@ -43,10 +43,6 @@ cluster.on('fork', (worker) => {
 // fork a new worker
 cluster.fork();
 cluster.fork();
-cluster.fork();
-cluster.fork();
-cluster.fork();
-cluster.fork();
 
 let isDone = false;
 
