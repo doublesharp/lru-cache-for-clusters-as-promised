@@ -10,6 +10,10 @@
     "coverage-report": "rm -rf ./coverage && NODE_ENV=test XUNIT_FILE=./coverage/xunit.xml ./node_modules/.bin/istanbul cover _mocha --print none --report none -- --reporter=spec-xunit-file && istanbul report cobertura && istanbul report lcov",
     "coverage-badge": "./node_modules/istanbul-cobertura-badger/lib/cli.js -e 95 -g 85 -b \"${PWD##*/}\""
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doublesharp/lru-cache-for-clusters-as-promised.git"
+  },
   "keywords": [
     "LRU",
     "cache",
