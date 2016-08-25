@@ -7,7 +7,8 @@
     "test": "mocha ./test",
     "lint": "./node_modules/.bin/eslint .",
     "coverage": "npm run coverage-report && open ./coverage/lcov-report/index.html",
-    "coverage-report": "rm -rf ./coverage && NODE_ENV=test XUNIT_FILE=./coverage/xunit.xml ./node_modules/.bin/istanbul cover _mocha --print none --report none -- --reporter=spec-xunit-file && istanbul report cobertura && istanbul report lcov"
+    "coverage-report": "rm -rf ./coverage && NODE_ENV=test XUNIT_FILE=./coverage/xunit.xml ./node_modules/.bin/istanbul cover _mocha --print none --report none -- --reporter=spec-xunit-file && istanbul report cobertura && istanbul report lcov",
+    "coverage-badge": "./node_modules/istanbul-cobertura-badger/lib/cli.js -e 95 -g 85 -b \"${PWD##*/}\""
   },
   "keywords": [
     "LRU",
@@ -34,6 +35,7 @@
     "eslint-plugin-react": "^6.1.2",
     "express": "^4.14.0",
     "istanbul": "^0.4.5",
+    "istanbul-cobertura-badger": "^1.2.1",
     "mocha": "^3.0.2",
     "should": "^11.1.0",
     "spec-xunit-file": "0.0.1-3",
