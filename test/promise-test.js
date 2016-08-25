@@ -122,4 +122,14 @@ describe('LRU Cache as Promised', () => {
     })
     .catch((err) => done(err));
   });
+
+  it('should get the itemCount', (done) => {
+    cache.set(config.args.one, config.args.one)
+    .then(() => cache.itemCount())
+    .then((result) => {
+      should(result).equal(1);
+      return done();
+    })
+    .catch((err) => done(err));
+  });
 });

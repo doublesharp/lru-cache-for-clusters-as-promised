@@ -94,7 +94,15 @@ function LRUCacheForClustersAsPromised(options) {
     const funcArgs = Array.prototype.slice.call(args, 1, args.length);
     if (cluster.isMaster) {
       // just call the function on the lru-cache
-      return Promise.resolve(lru[func](...funcArgs));
+      switch (func) {
+        case 'itemCount':
+        case 'length':
+          return Promise.resolve(lru[func]);
+          break;
+        default:
+          return Promise.resolve(lru[func](...funcArgs));
+          break;
+      }
     }
     return new Promise((resolve) => {
       // create the request to the master
@@ -137,8 +145,8 @@ function LRUCacheForClustersAsPromised(options) {
     values: () => promiseTo('values'),
     dump: () => promiseTo('dump'),
     prune: () => promiseTo('prune'),
-    length: () => (cluster.isMaster ? lru.length : promiseTo('length')),
-    itemCount: () => (cluster.isMaster ? lru.itemCount : promiseTo('itemCount')),
+    length: () => promiseTo('length'),
+    itemCount: () => promiseTo('itemCount'),
   };
 }
 
