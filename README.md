@@ -37,31 +37,31 @@ const key = 'userKey';
 // set a user for a the key
 cache.set(key, user)
 .then(() => {
-  console.log('set the user');
+  console.log('set the user to the cache');
 
-  // get the same use back out of the cache
+  // get the same user back out of the cache
   return cache.get(key);
 })
 .then((cachedUser) => {
-  console.log('got the user', cachedUser);
+  console.log('got the user from cache', cachedUser);
 
-  // check the number of items in the cache
+  // check the number of users in the cache
   return cache.length();
 })
 .then((size) => {
-  console.log('cache size/length', size);
+  console.log('user cache size/length', size);
 
   // remove all the items from the cache
   return cache.reset();
 })
 .then(() => {
-  console.log('the cache is empty');
+  console.log('the user cache is empty');
 
-  // this will return the same value as calling length()
+  // return user count, this will return the same value as calling length()
   return cache.itemCount();
 })
 .then((size) => {
-  console.log('cache size/itemCount', size);
+  console.log('user cache size/itemCount', size);
 });
 
 ```
