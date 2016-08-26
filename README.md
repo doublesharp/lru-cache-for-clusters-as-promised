@@ -48,6 +48,8 @@ cache.set(key, user)
 
 # options
 
+* `namespace: string`
+  * the namespace for this cache on the master thread as it is not aware of the worker instances
 * `max: number`
   * the maximum items that can be stored in the cache
 * `maxAge: milliseconds`
