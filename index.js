@@ -1,3 +1,11 @@
+/**
+ * Provide a cluster-safe lru-cache with Promises
+ *
+ * @module lru-cache-for-clusters-as-promised
+ * @exports LRUCacheForClustersAsPromised
+ */
+/* eslint comma-dangle: [2, "always"] */
+
 const cluster = require('cluster');
 const uuid = require('uuid');
 const LRUCache = require('lru-cache');
@@ -99,11 +107,9 @@ function LRUCacheForClustersAsPromised(options) {
         case 'length':
           // return the property value
           return Promise.resolve(lru[func]);
-          break;
         default:
           // just call the function on the lru-cache
           return Promise.resolve(lru[func](...funcArgs));
-          break;
       }
     }
     return new Promise((resolve) => {
