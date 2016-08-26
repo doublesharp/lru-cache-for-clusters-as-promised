@@ -36,19 +36,33 @@ const key = 'userKey';
 
 // set a user for a the key
 cache.set(key, user)
-.then(() => console.log('set user'))
-// get the same use back out of the cache
-.then(() => cache.get(key))
-.then((cachedUser) => console.log('get user', cachedUser))
-// check the number of items in the cache
-.then(() => cache.length())
-.then((size) => console.log('cache size/length', size))
-// remove all the items from the cache
-.then(() => cache.reset())
-.then(() => console.log('the cache is empty'))
-// this will return the same value as calling length()
-.then(() => cache.itemCount())
-.then((size) => console.log('cache size/itemCount', size));
+.then(() => {
+  console.log('set the user');
+
+  // get the same use back out of the cache
+  return cache.get(key);
+})
+.then((cachedUser) => {
+  console.log('got the user', cachedUser);
+
+  // check the number of items in the cache
+  return cache.length();
+})
+.then((size) => {
+  console.log('cache size/length', size);
+
+  // remove all the items from the cache
+  return cache.reset();
+})
+.then(() => {
+  console.log('the cache is empty');
+
+  // this will return the same value as calling length()
+  return cache.itemCount();
+})
+.then((size) => {
+  console.log('cache size/itemCount', size);
+});
 
 ```
 
