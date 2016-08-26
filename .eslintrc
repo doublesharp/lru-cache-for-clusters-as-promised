@@ -1,4 +1,4 @@
-module.exports = {
+{
   extends: 'airbnb',
   installedESLint: true,
   plugins: [
@@ -8,4 +8,4 @@ module.exports = {
     es6: true,
     node: true,
   },
-};
+}
