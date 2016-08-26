@@ -33,16 +33,22 @@ const cache = new LRUCache({
 
 const user = { name: 'user name' };
 const key = 'userKey';
+
+// set a user for a the key
 cache.set(key, user)
 .then(() => console.log('set user'))
+// get the same use back out of the cache
 .then(() => cache.get(key))
 .then((cachedUser) => console.log('get user', cachedUser))
+// check the number of items in the cache
 .then(() => cache.length())
 .then((size) => console.log('cache size/length', size))
-.then(() => cache.itemCount())
-.then((size) => console.log('cache size/itemCount - same as length', size))
+// remove all the items from the cache
 .then(() => cache.reset())
-.then(() => console.log('the cache is empty'));
+.then(() => console.log('the cache is empty'))
+// this will return the same value as calling length()
+.then(() => cache.itemCount())
+.then((size) => console.log('cache size/itemCount', size));
 
 ```
 
