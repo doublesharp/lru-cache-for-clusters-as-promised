@@ -42,9 +42,47 @@ cache.set(key, user)
 .then(() => cache.itemCount())
 .then((size) => console.log('cache size/itemCount - same as length', size))
 .then(() => cache.reset())
-.then((cachedUser) => console.log('the cache is empty'));
+.then(() => console.log('the cache is empty'));
 
 ```
+
+# options
+
+* `max: number`
+  * the maximum items that can be stored in the cache
+* `maxAge: milliseconds`
+  * the maximum age for an item to be considered valid
+* `stale: true|false`
+  * when true expired items are return before they are removed rather than undefined
+
+> ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
+
+# api
+
+* `set(key, value)`
+  * sets a value for a key
+* `get(key)`
+  * returns a value for a key
+* `peek(key)`
+  * return the value for a key without updating its last access time
+* `del(key)`
+  * remove a value from the cache
+* `has(key)`
+  * returns true if the key exists in the cache
+* `reset()`
+  * removes all values from the cache
+* `keys()`
+  * returns an array of all the cache keys
+* `values()`
+  * returns an array of all the cache values
+* `dump()`
+  * returns a serialized array of the cache contents
+* `prune()`
+  * manually removes items from the cache rather than on get
+* `length()`
+  * return the number of items in the cache
+* `itemCount()`
+  * return the number of items in the cache. same as `length()`.
 
 # process flow
 
