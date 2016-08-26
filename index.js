@@ -93,13 +93,15 @@ function LRUCacheForClustersAsPromised(options) {
     // the rest of the args are the function arguments of N length
     const funcArgs = Array.prototype.slice.call(args, 1, args.length);
     if (cluster.isMaster) {
-      // just call the function on the lru-cache
+      // act on the local lru-cache
       switch (func) {
         case 'itemCount':
         case 'length':
+          // return the property value
           return Promise.resolve(lru[func]);
           break;
         default:
+          // just call the function on the lru-cache
           return Promise.resolve(lru[func](...funcArgs));
           break;
       }
@@ -114,13 +116,13 @@ function LRUCacheForClustersAsPromised(options) {
         arguments: funcArgs,
       };
       // if we don't get a response in 100ms, return undefined
-      let failSafe = setTimeout(() => {
-        failSafe = undefined;
+      let isFailed = setTimeout(() => {
+        isFailed = undefined;
         resolve(undefined);
       }, 100);
       // set the callback for this id to resolve the promise
       callbacks[request.id] = (result) =>
-        (!failSafe || clearTimeout(failSafe) || resolve(result.value));
+        (!isFailed || clearTimeout(isFailed) || resolve(result.value));
       // send the request to the master process
       process.send(request);
     });
