@@ -17,7 +17,7 @@ describe('LRU Cache as Promised', () => {
   it('should set(key, value)', (done) => {
     cache.set(config.args.one, config.args.one)
     .then(() => done())
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should get(key)', (done) => {
@@ -27,7 +27,7 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(config.args.one);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should del(key)', (done) => {
@@ -37,7 +37,7 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(undefined);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should add four keys and have the first fall out', (done) => {
@@ -50,7 +50,7 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(undefined);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should add four keys and then access the first so the second falls out', (done) => {
@@ -64,7 +64,7 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(config.args.one);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should peek(key)', (done) => {
@@ -83,7 +83,7 @@ describe('LRU Cache as Promised', () => {
       should(vals).deepEqual(['one', undefined]);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should has(key)', (done) => {
@@ -93,7 +93,7 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(true);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should return length/itemCount', (done) => {
@@ -109,7 +109,7 @@ describe('LRU Cache as Promised', () => {
       should(vals).deepEqual([1, 1]);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should reset the cache', (done) => {
@@ -120,7 +120,7 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(undefined);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 
   it('should get the itemCount', (done) => {
@@ -130,6 +130,6 @@ describe('LRU Cache as Promised', () => {
       should(result).equal(1);
       return done();
     })
-    .catch((err) => done(err));
+    .catch(err => done(err));
   });
 });

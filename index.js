@@ -112,7 +112,7 @@ function LRUCacheForClustersAsPromised(options) {
           return Promise.resolve(lru[func](...funcArgs));
       }
     }
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       // create the request to the master
       const request = {
         source,
@@ -127,8 +127,12 @@ function LRUCacheForClustersAsPromised(options) {
         resolve(undefined);
       }, 100);
       // set the callback for this id to resolve the promise
-      callbacks[request.id] = (result) =>
-        (!isFailed || clearTimeout(isFailed) || resolve(result.value));
+      callbacks[request.id] = (result) => {
+        if (!isFailed && clearTimeout(isFailed)) {
+          return resolve(result.value);
+        }
+        return reject();
+      };
       // send the request to the master process
       process.send(request);
     });
@@ -144,10 +148,10 @@ function LRUCacheForClustersAsPromised(options) {
   // return a Promise.
   return {
     set: (key, value) => promiseTo('set', key, value),
-    get: (key) => promiseTo('get', key),
-    peek: (key) => promiseTo('peek', key),
-    del: (key) => promiseTo('del', key),
-    has: (key) => promiseTo('has', key),
+    get: key => promiseTo('get', key),
+    peek: key => promiseTo('peek', key),
+    del: key => promiseTo('del', key),
+    has: key => promiseTo('has', key),
     reset: () => promiseTo('reset'),
     keys: () => promiseTo('keys'),
     values: () => promiseTo('values'),

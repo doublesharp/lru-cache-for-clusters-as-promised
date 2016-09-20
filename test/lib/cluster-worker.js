@@ -13,7 +13,7 @@ const app = express();
 
 // test non-caching messages
 let callback;
-process.on('message', (response) => callback && callback(response));
+process.on('message', response => callback && callback(response));
 
 app.get('/hi', (req, res) => {
   callback = (response) => {
@@ -24,19 +24,19 @@ app.get('/hi', (req, res) => {
 
 app.get('/set', (req, res) => {
   cache.set(config.args.one, config.args.one)
-  .then((result) => res.send(result));
+  .then(result => res.send(result));
 });
 
 app.get('/get', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.get(config.args.one))
-  .then((result) => res.send(result));
+  .then(result => res.send(result));
 });
 
 app.get('/del', (req, res) => {
   cache.del(config.args.one)
   .then(() => cache.get(config.args.one))
-  .then((result) => res.send(result));
+  .then(result => res.send(result));
 });
 
 app.get('/one-two-three-four', (req, res) => {
@@ -45,7 +45,7 @@ app.get('/one-two-three-four', (req, res) => {
   .then(() => cache.set(config.args.three, config.args.three))
   .then(() => cache.set(config.args.four, config.args.four))
   .then(() => cache.get(config.args.one))
-  .then((result) => res.send(result));
+  .then(result => res.send(result));
 });
 
 app.get('/one-two-three-four-one', (req, res) => {
@@ -55,7 +55,7 @@ app.get('/one-two-three-four-one', (req, res) => {
   .then(() => cache.get(config.args.one))
   .then(() => cache.set(config.args.four, config.args.four))
   .then(() => cache.get(config.args.one))
-  .then((result) => res.send(result));
+  .then(result => res.send(result));
 });
 
 app.get('/peek', (req, res) => {
@@ -78,7 +78,7 @@ app.get('/peek', (req, res) => {
 app.get('/has', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.has(config.args.one))
-  .then((result) => res.send(result));
+  .then(result => res.send(result));
 });
 
 app.get('/length-itemcount', (req, res) => {
@@ -98,7 +98,7 @@ app.get('/length-itemcount', (req, res) => {
 app.get('/reset', (req, res) => {
   cache.reset()
   .then(() => cache.itemCount())
-  .then((result) => res.send({ result }));
+  .then(result => res.send({ result }));
 });
 
 app.get('/keys-values', (req, res) => {
@@ -119,13 +119,13 @@ app.get('/prune', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.prune())
   .then(() => cache.itemCount())
-  .then((result) => res.send({ result }));
+  .then(result => res.send({ result }));
 });
 
 app.get('/dump', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.dump())
-  .then((result) => res.send({ result }));
+  .then(result => res.send({ result }));
 });
 
 const server = http.createServer(app);
