@@ -7,8 +7,11 @@
 /* eslint comma-dangle: [2, "always"] */
 
 const cluster = require('cluster');
+const Debug = require('debug');
 const uuid = require('uuid');
 const LRUCache = require('lru-cache');
+
+const debug = new Debug('lru-cache-for-clusters-as-promised');
 
 // lru caches by namespace on the master
 const caches = {};
@@ -17,10 +20,18 @@ const caches = {};
 const callbacks = {};
 
 // use to identify messages from our module
-const source = 'lru-cache-for-clusters';
+const source = 'lru-cache-for-clusters-as-promised';
 
-// only run on the master thread
-if (cluster.isMaster) {
+if (cluster.isWorker) {
+  process.on('message', (response) => {
+    // look up the callback based on the response ID, delete it, then call it
+    if (response.source !== source || !callbacks[response.id]) return;
+    const callback = callbacks[response.id];
+    delete callbacks[response.id];
+    callback(response);
+  });
+  // only run on the master thread
+} else if (cluster.isMaster) {
   // for each worker created...
   cluster.on('fork', (worker) => {
     // wait for the worker to send a message
@@ -62,14 +73,6 @@ if (cluster.isMaster) {
           break;
       }
     });
-  });
-} else {
-  process.on('message', (response) => {
-    // look up the callback based on the response ID, delete it, then call it
-    if (response.source !== source || !callbacks[response.id]) return;
-    const callback = callbacks[response.id];
-    delete callbacks[response.id];
-    callback(response);
   });
 }
 
@@ -122,16 +125,16 @@ function LRUCacheForClustersAsPromised(options) {
         arguments: funcArgs,
       };
       // if we don't get a response in 100ms, return undefined
-      let isFailed = setTimeout(() => {
-        isFailed = undefined;
-        resolve(undefined);
+      let failsafeTimeout = setTimeout(() => {
+        failsafeTimeout = undefined;
+        return reject(new Error('Timed out in isFailed() timeout'));
       }, 100);
       // set the callback for this id to resolve the promise
       callbacks[request.id] = (result) => {
-        if (!isFailed && clearTimeout(isFailed)) {
-          return resolve(result.value);
+        if (failsafeTimeout) {
+          clearTimeout(failsafeTimeout);
         }
-        return reject();
+        return resolve(result.value);
       };
       // send the request to the master process
       process.send(request);
@@ -140,7 +143,8 @@ function LRUCacheForClustersAsPromised(options) {
 
   if (cluster.isWorker) {
     // create a new LRU cache on the master
-    promiseTo('()', options);
+    promiseTo('()', options)
+    .catch(err => debug('failed to create lru cache on master', err, options));
   }
 
   // the lru-cache functions we are able to provide. Note that length()
