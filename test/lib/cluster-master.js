@@ -1,4 +1,5 @@
 const cluster = require('cluster');
+const os = require('os');
 const path = require('path');
 
 // this is the path to the cluster worker that spawns the http server
@@ -40,11 +41,14 @@ cluster.on('fork', (worker) => {
   });
 });
 
-// fork a new worker
-cluster.fork();
-cluster.fork();
 
-let isDone = false;
+// create one process per CPU core
+const workers = os.cpus().length;
+for (let i = 0; i < workers; i += 1) {
+  cluster.fork();
+}
+
+let listeningCount = 0;
 
 // provide a function for mocha so we can call back when the worker is ready
 module.exports = (done) => {
@@ -52,9 +56,9 @@ module.exports = (done) => {
   cluster.on('fork', (worker) => {
     // fire when the worker is ready for new connections
     worker.on('listening', () => {
+      listeningCount += 1;
       // tell mocha we are good to go
-      if (!isDone) {
-        isDone = true;
+      if (listeningCount === workers) {
         done();
       }
     });

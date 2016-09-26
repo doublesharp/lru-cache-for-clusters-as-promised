@@ -95,6 +95,9 @@ function LRUCacheForClustersAsPromised(options) {
   // this is how the clustered cache differentiates
   cache.namespace = options.namespace || 'default';
 
+  // this is how long the worker will wait for a response from the master in milliseconds
+  cache.timeout = options.timeout || 100;
+
   // return a promise that resolves to the result of the method on
   // the local lru-cache this is the master thread, or from the
   // lru-cache on the master thread if this is a worker
@@ -128,13 +131,14 @@ function LRUCacheForClustersAsPromised(options) {
       let failsafeTimeout = setTimeout(() => {
         failsafeTimeout = undefined;
         return reject(new Error('Timed out in isFailed() timeout'));
-      }, 100);
+      }, cache.timeout);
       // set the callback for this id to resolve the promise
       callbacks[request.id] = (result) => {
         if (failsafeTimeout) {
           clearTimeout(failsafeTimeout);
+          return resolve(result.value);
         }
-        return resolve(result.value);
+        return false;
       };
       // send the request to the master process
       process.send(request);

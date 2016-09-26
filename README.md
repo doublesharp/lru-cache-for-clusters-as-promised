@@ -14,12 +14,52 @@ Each time you call [`cluster.fork()`](https://nodejs.org/api/cluster.html#cluste
 
 LRU Cache for Clusters as Promised stores a single `lru-cache` on the [`master`](https://nodejs.org/api/cluster.html#cluster_cluster_ismaster) thread which is accessed by the `workers` via IPC messages. The same `lru-cache` is shared between `workers` having a common `master`, so no memory is wasted.
 
-To differentiate caches on the master as instances on the `workers`, specify a `namespace` value in the options argument of the `new LRUCache(options)` constructor.
-
 # install
 ```shell
 npm install --save lru-cache-for-clusters-as-promised
 ```
+
+# options
+
+* `namespace: string`, default `"default"`;
+  * the namespace for this cache on the master thread as it is not aware of the worker instances
+* `timeout: integer`, default `100`.
+  * The amount of time in milliseconds that a worker will wait for a response from the master before rejecting the Promise.
+* `max: number`
+  * the maximum items that can be stored in the cache
+* `maxAge: milliseconds`
+  * the maximum age for an item to be considered valid
+* `stale: true|false`
+  * when true expired items are return before they are removed rather than undefined
+
+> ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
+
+# api
+
+* `set(key, value)`
+  * sets a value for a key
+* `get(key)`
+  * returns a value for a key
+* `peek(key)`
+  * return the value for a key without updating its last access time
+* `del(key)`
+  * remove a value from the cache
+* `has(key)`
+  * returns true if the key exists in the cache
+* `reset()`
+  * removes all values from the cache
+* `keys()`
+  * returns an array of all the cache keys
+* `values()`
+  * returns an array of all the cache values
+* `dump()`
+  * returns a serialized array of the cache contents
+* `prune()`
+  * manually removes items from the cache rather than on get
+* `length()`
+  * return the number of items in the cache
+* `itemCount()`
+  * return the number of items in the cache. same as `length()`.
 
 # example usage
 ```javascript
@@ -65,49 +105,9 @@ cache.set(key, user)
 
 ```
 
-# options
-
-* `namespace: string`
-  * the namespace for this cache on the master thread as it is not aware of the worker instances
-* `max: number`
-  * the maximum items that can be stored in the cache
-* `maxAge: milliseconds`
-  * the maximum age for an item to be considered valid
-* `stale: true|false`
-  * when true expired items are return before they are removed rather than undefined
-
-> ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
-
-# api
-
-* `set(key, value)`
-  * sets a value for a key
-* `get(key)`
-  * returns a value for a key
-* `peek(key)`
-  * return the value for a key without updating its last access time
-* `del(key)`
-  * remove a value from the cache
-* `has(key)`
-  * returns true if the key exists in the cache
-* `reset()`
-  * removes all values from the cache
-* `keys()`
-  * returns an array of all the cache keys
-* `values()`
-  * returns an array of all the cache values
-* `dump()`
-  * returns a serialized array of the cache contents
-* `prune()`
-  * manually removes items from the cache rather than on get
-* `length()`
-  * return the number of items in the cache
-* `itemCount()`
-  * return the number of items in the cache. same as `length()`.
-
 # process flow
 
-**Clustered cache on master thread for clustered environments***
+**Clustered cache on master thread for clustered environments**
 ```
                                                                 +-----+
 +--------+  +---------------+  +---------+  +---------------+   # M T #
@@ -127,7 +127,7 @@ v---------------------------------------------------------------+-----+
 +-----+
 ```
 
-**Promisified for non-clustered environments***
+**Promisified for non-clustered environments**
 ```
 +---------------+  +---------------+  +---------+  +-----------+
 |               +--> LRU Cache for +-->         +-->           |
