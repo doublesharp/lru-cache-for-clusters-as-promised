@@ -63,6 +63,11 @@ npm install --save lru-cache-for-clusters-as-promised
 
 # example usage
 ```javascript
+// require the module in your master thread that creates workers to initialize
+const LRUCache = require('lru-cache-for-clusters-as-promised').init();
+
+
+```javascript
 const LRUCache = require('lru-cache-for-clusters-as-promised');
 const cache = new LRUCache({
   max: 50,

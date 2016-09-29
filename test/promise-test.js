@@ -26,8 +26,7 @@ describe('LRU Cache as Promised', () => {
     .then((result) => {
       should(result).equal(config.args.one);
       return done();
-    })
-    .catch(err => done(err));
+    });
   });
 
   it('should del(key)', (done) => {

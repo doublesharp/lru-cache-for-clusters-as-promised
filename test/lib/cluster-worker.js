@@ -24,6 +24,18 @@ app.get('/hi', (req, res) => {
   process.send('hi');
 });
 
+app.get('/timeout', (req, res) => {
+  const cacheBad = new LRUCache({
+    max: 3,
+    stale: false,
+    timeout: 1,
+    namespace: 'bad-cache',
+  });
+  return cacheBad.get('test')
+  .then(() => res.send('fail'))
+  .catch(() => res.send('ok'));
+});
+
 app.get('/set', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(result => res.send(result))

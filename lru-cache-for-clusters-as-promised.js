@@ -22,16 +22,8 @@ const callbacks = {};
 // use to identify messages from our module
 const source = 'lru-cache-for-clusters-as-promised';
 
-if (cluster.isWorker) {
-  process.on('message', (response) => {
-    // look up the callback based on the response ID, delete it, then call it
-    if (response.source !== source || !callbacks[response.id]) return;
-    const callback = callbacks[response.id];
-    delete callbacks[response.id];
-    callback(response);
-  });
-  // only run on the master thread
-} else if (cluster.isMaster) {
+// only run on the master thread
+if (cluster.isMaster) {
   // for each worker created...
   cluster.on('fork', (worker) => {
     // wait for the worker to send a message
@@ -73,6 +65,17 @@ if (cluster.isWorker) {
           break;
       }
     });
+  });
+}
+
+// run on each worker thread
+if (cluster.isWorker) {
+  process.on('message', (response) => {
+    // look up the callback based on the response ID, delete it, then call it
+    if (response.source !== source || !callbacks[response.id]) return;
+    const callback = callbacks[response.id];
+    delete callbacks[response.id];
+    callback(response);
   });
 }
 
@@ -130,7 +133,7 @@ function LRUCacheForClustersAsPromised(options) {
       // if we don't get a response in 100ms, return undefined
       let failsafeTimeout = setTimeout(() => {
         failsafeTimeout = undefined;
-        return reject(new Error('Timed out in isFailed() timeout'));
+        return reject(new Error('Timed out in isFailed()'));
       }, cache.timeout);
       // set the callback for this id to resolve the promise
       callbacks[request.id] = (result) => {
@@ -171,3 +174,4 @@ function LRUCacheForClustersAsPromised(options) {
 }
 
 module.exports = LRUCacheForClustersAsPromised;
+module.exports.init = () => true;

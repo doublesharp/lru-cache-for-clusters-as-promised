@@ -1,6 +1,9 @@
 const cluster = require('cluster');
 const os = require('os');
 const path = require('path');
+const LRUCache = require('../../');
+
+LRUCache.init();
 
 // this is the path to the cluster worker that spawns the http server
 const workerPath = path.join(__dirname, 'cluster-worker.js');
