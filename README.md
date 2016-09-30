@@ -22,60 +22,68 @@ npm install --save lru-cache-for-clusters-as-promised
 # options
 
 * `namespace: string`, default `"default"`;
-  * the namespace for this cache on the master thread as it is not aware of the worker instances
+  * The namespace for this cache on the master thread as it is not aware of the worker instances.
 * `timeout: integer`, default `100`.
-  * The amount of time in milliseconds that a worker will wait for a response from the master before rejecting the Promise.
+  * The amount of time in milliseconds that a worker will wait for a response from the master before rejecting the `Promise`.
 * `failsafe: string`, default `resolve`.
-  * When a request times out the Promise will return `resolve(undefined)` by default, or with a value of `reject` the return will be `reject(Error)`.
+  * When a request times out the `Promise` will return `resolve(undefined)` by default, or with a value of `reject` the return will be `reject(Error)`.
 * `max: number`
-  * the maximum items that can be stored in the cache
+  * The maximum items that can be stored in the cache
 * `maxAge: milliseconds`
-  * the maximum age for an item to be considered valid
+  * The maximum age for an item to be considered valid
 * `stale: true|false`
-  * when true expired items are return before they are removed rather than undefined
+  * When `true` expired items are return before they are removed rather than `undefined`
 
 > ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
 
 # api
 
 * `set(key, value)`
-  * sets a value for a key
+  * Sets a value for a key.
 * `get(key)`
-  * returns a value for a key
+  * Returns a value for a key.
 * `peek(key)`
-  * return the value for a key without updating its last access time
+  * Returns the value for a key without updating its last access time.
 * `del(key)`
-  * remove a value from the cache
+  * Removes a value from the cache.
 * `has(key)`
-  * returns true if the key exists in the cache
+  * Returns true if the key exists in the cache.
+* `incr(key, [amount])`
+  * Increments a numeric key value by the `amount`, which defaults to `1`. More atomic in a clustered environment.
+* `decr(key, [amount])`
+  * Decrements a numeric key value by the `amount`, which defaults to `1`. More atomic in a clustered environment.
 * `reset()`
-  * removes all values from the cache
+  * Removes all values from the cache.
 * `keys()`
-  * returns an array of all the cache keys
+  * Returns an array of all the cache keys.
 * `values()`
-  * returns an array of all the cache values
+  * Returns an array of all the cache values.
 * `dump()`
-  * returns a serialized array of the cache contents
+  * Returns a serialized array of the cache contents.
 * `prune()`
-  * manually removes items from the cache rather than on get
+  * Manually removes items from the cache rather than on get.
 * `length()`
-  * return the number of items in the cache
+  * Return the number of items in the cache.
 * `itemCount()`
-  * return the number of items in the cache. same as `length()`.
+  * Return the number of items in the cache - same as `length()`.
 
 # example usage
 ```javascript
 // require the module in your master thread that creates workers to initialize
-const LRUCache = require('lru-cache-for-clusters-as-promised').init();
+const LRUCache = require('lru-cache-for-clusters-as-promised');
+
+LRUCache.init();
 ```
 
 ```javascript
 // worker code
 const LRUCache = require('lru-cache-for-clusters-as-promised');
 const cache = new LRUCache({
+  namespace: 'users',
   max: 50,
   stale: false,
-  namespace: 'users',
+  timeout: 100,
+  failsafe: 'resolve',
 });
 
 const user = { name: 'user name' };

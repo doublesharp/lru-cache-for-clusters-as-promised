@@ -44,25 +44,43 @@ if (cluster.isMaster) {
 
       switch (request.func) {
         // constructor request
-        case '()':
+        case '()': {
           // create a new lru-cache, give it a namespace, and save it locally
           lru = caches[request.namespace] = new LRUCache(...request.arguments);
           lru.namespace = request.namespace;
           sendResponse(lru);
           break;
+        }
+        case 'decr':
+        case 'incr': {
+          // get the current value
+          let value = lru.get(request.arguments[0]);
+          // maybe initialize and increment
+          value = (typeof value === 'number' ? value : 0) +
+            ((request.arguments[1] || 1) * (request.func === 'decr' ? -1 : 1));
+          // set the new value
+          lru.set(request.arguments[0], value);
+          // send the new value
+          sendResponse({
+            value,
+          });
+          break;
+        }
         // return the property value
         case 'length':
-        case 'itemCount':
+        case 'itemCount': {
           sendResponse({
             value: lru[request.func],
           });
           break;
+        }
         // return the function value
-        default:
+        default: {
           sendResponse({
             value: lru[request.func](...request.arguments),
           });
           break;
+        }
       }
     });
   });
@@ -115,13 +133,27 @@ function LRUCacheForClustersAsPromised(options) {
     if (cluster.isMaster) {
       // act on the local lru-cache
       switch (func) {
+        case 'decr':
+        case 'incr': {
+          // get the current value default to 0
+          let value = lru.get(funcArgs[0]);
+          // maybe initialize and increment
+          value = (typeof value === 'number' ? value : 0) +
+            ((funcArgs[1] || 1) * (func === 'decr' ? -1 : 1));
+          // set the new value
+          lru.set(funcArgs[0], value);
+          // resolve the new value
+          return Promise.resolve(value);
+        }
         case 'itemCount':
-        case 'length':
+        case 'length': {
           // return the property value
           return Promise.resolve(lru[func]);
-        default:
+        }
+        default: {
           // just call the function on the lru-cache
           return Promise.resolve(lru[func](...funcArgs));
+        }
       }
     }
     return new Promise((resolve, reject) => {
@@ -169,6 +201,8 @@ function LRUCacheForClustersAsPromised(options) {
     peek: key => promiseTo('peek', key),
     del: key => promiseTo('del', key),
     has: key => promiseTo('has', key),
+    incr: (key, amount) => promiseTo('incr', key, amount),
+    decr: (key, amount) => promiseTo('decr', key, amount),
     reset: () => promiseTo('reset'),
     keys: () => promiseTo('keys'),
     values: () => promiseTo('values'),

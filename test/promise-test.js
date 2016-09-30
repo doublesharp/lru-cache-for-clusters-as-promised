@@ -39,6 +39,60 @@ describe('LRU Cache as Promised', () => {
     .catch(err => done(err));
   });
 
+  it('should incr(key)', (done) => {
+    cache.incr(config.args.one)
+    .then((value) => {
+      should(value).eql(1);
+      return cache.incr(config.args.one);
+    })
+    .then((value) => {
+      should(value).eql(2);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
+  it('should incr(key, 2)', (done) => {
+    const amount = 2;
+    cache.incr(config.args.one, amount)
+    .then((value) => {
+      should(value).eql(2);
+      return cache.incr(config.args.one, amount);
+    })
+    .then((value) => {
+      should(value).eql(4);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
+  it('should decr(key)', (done) => {
+    cache.decr(config.args.one)
+    .then((value) => {
+      should(value).eql(-1);
+      return cache.decr(config.args.one);
+    })
+    .then((value) => {
+      should(value).eql(-2);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
+  it('should decr(key, 2)', (done) => {
+    const amount = 2;
+    cache.decr(config.args.one, amount)
+    .then((value) => {
+      should(value).eql(-2);
+      return cache.decr(config.args.one, amount);
+    })
+    .then((value) => {
+      should(value).eql(-4);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
   it('should add four keys and have the first fall out', (done) => {
     cache.set(config.args.one, config.args.one)
     .then(() => cache.set(config.args.two, config.args.two))

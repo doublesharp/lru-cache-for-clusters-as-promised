@@ -90,6 +90,62 @@ describe('LRU Cache for Clusters', () => {
     });
   });
 
+  it('should incr(key)', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/incr')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).eql('[1,2]');
+      return done();
+    });
+  });
+
+  it('should incr(key, 2)', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/incr2')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).eql('[2,4]');
+      return done();
+    });
+  });
+
+  it('should decr(key)', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/decr')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).eql('[-1,-2]');
+      return done();
+    });
+  });
+
+  it('should decr(key, 2)', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/decr2')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).eql('[-2,-4]');
+      return done();
+    });
+  });
+
   it('should add four keys and have the first fall out', (done) => {
     // run the request
     request(`http://${config.server.host}:${config.server.port}`)

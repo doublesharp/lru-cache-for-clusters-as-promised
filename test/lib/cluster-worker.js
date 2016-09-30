@@ -66,6 +66,60 @@ app.get('/del', (req, res) => {
   .catch(err => res.send(err));
 });
 
+app.get('/incr', (req, res) => {
+  const values = [];
+  return cache.incr(config.args.one)
+  .then((value) => {
+    values.push(value);
+    return cache.incr(config.args.one);
+  })
+  .then((value) => {
+    values.push(value);
+    res.send(values);
+  });
+});
+
+app.get('/incr2', (req, res) => {
+  const values = [];
+  const amount = 2;
+  return cache.incr(config.args.one, amount)
+  .then((value) => {
+    values.push(value);
+    return cache.incr(config.args.one, amount);
+  })
+  .then((value) => {
+    values.push(value);
+    res.send(values);
+  });
+});
+
+app.get('/decr', (req, res) => {
+  const values = [];
+  return cache.decr(config.args.one)
+  .then((value) => {
+    values.push(value);
+    return cache.decr(config.args.one);
+  })
+  .then((value) => {
+    values.push(value);
+    res.send(values);
+  });
+});
+
+app.get('/decr2', (req, res) => {
+  const values = [];
+  const amount = 2;
+  return cache.decr(config.args.one, amount)
+  .then((value) => {
+    values.push(value);
+    return cache.decr(config.args.one, amount);
+  })
+  .then((value) => {
+    values.push(value);
+    res.send(values);
+  });
+});
+
 app.get('/one-two-three-four', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.set(config.args.two, config.args.two))
