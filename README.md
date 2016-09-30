@@ -25,6 +25,8 @@ npm install --save lru-cache-for-clusters-as-promised
   * the namespace for this cache on the master thread as it is not aware of the worker instances
 * `timeout: integer`, default `100`.
   * The amount of time in milliseconds that a worker will wait for a response from the master before rejecting the Promise.
+* `failsafe: string`, default `resolve`.
+  * When a request times out the Promise will return `resolve(undefined)` by default, or with a value of `reject` the return will be `reject(Error)`.
 * `max: number`
   * the maximum items that can be stored in the cache
 * `maxAge: milliseconds`

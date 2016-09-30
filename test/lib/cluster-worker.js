@@ -32,21 +32,31 @@ app.get('/timeout', (req, res) => {
     namespace: 'bad-cache',
   });
   return cacheBad.get('test')
+  .then(result => res.send(result === undefined ? 'ok' : 'fail'));
+});
+
+app.get('/reject', (req, res) => {
+  const cacheBad = new LRUCache({
+    max: 3,
+    stale: false,
+    timeout: 1,
+    failsafe: 'reject',
+    namespace: 'bad-cache2',
+  });
+  return cacheBad.get('test')
   .then(() => res.send('fail'))
   .catch(() => res.send('ok'));
 });
 
 app.get('/set', (req, res) => {
   cache.set(config.args.one, config.args.one)
-  .then(result => res.send(result))
-  .catch(err => res.send(err));
+  .then(result => res.send(result));
 });
 
 app.get('/get', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.get(config.args.one))
-  .then(result => res.send(result))
-  .catch(err => res.send(err));
+  .then(result => res.send(result));
 });
 
 app.get('/del', (req, res) => {
@@ -62,8 +72,7 @@ app.get('/one-two-three-four', (req, res) => {
   .then(() => cache.set(config.args.three, config.args.three))
   .then(() => cache.set(config.args.four, config.args.four))
   .then(() => cache.get(config.args.one))
-  .then(result => res.send(result))
-  .catch(err => res.send(err));
+  .then(result => res.send(result));
 });
 
 app.get('/one-two-three-four-one', (req, res) => {
@@ -73,8 +82,7 @@ app.get('/one-two-three-four-one', (req, res) => {
   .then(() => cache.get(config.args.one))
   .then(() => cache.set(config.args.four, config.args.four))
   .then(() => cache.get(config.args.one))
-  .then(result => res.send(result))
-  .catch(err => res.send(err));
+  .then(result => res.send(result));
 });
 
 app.get('/peek', (req, res) => {
@@ -91,15 +99,13 @@ app.get('/peek', (req, res) => {
   .then((result) => {
     vals.push(result);
     return res.send(vals);
-  })
-  .catch(err => res.send(err));
+  });
 });
 
 app.get('/has', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.has(config.args.one))
-  .then(result => res.send(result))
-  .catch(err => res.send(err));
+  .then(result => res.send(result));
 });
 
 app.get('/length-itemcount', (req, res) => {
@@ -113,15 +119,13 @@ app.get('/length-itemcount', (req, res) => {
   .then((result) => {
     vals.push(result);
     return res.send(vals);
-  })
-  .catch(err => res.send(err));
+  });
 });
 
 app.get('/reset', (req, res) => {
   cache.reset()
   .then(() => cache.itemCount())
-  .then(result => res.send({ result }))
-  .catch(err => res.send(err));
+  .then(result => res.send({ result }));
 });
 
 app.get('/keys-values', (req, res) => {
@@ -141,19 +145,15 @@ app.get('/keys-values', (req, res) => {
 
 app.get('/prune', (req, res) => {
   cache.set(config.args.one, config.args.one)
-  .then(() => cache.prune()
-  .catch(err => res.send(err)))
-  .then(() => cache.itemCount()
-  .catch(err => res.send(err)))
-  .then(result => res.send({ result }))
-  .catch(err => res.send(err));
+  .then(() => cache.prune())
+  .then(() => cache.itemCount())
+  .then(result => res.send({ result }));
 });
 
 app.get('/dump', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.dump())
-  .then(result => res.send({ result }))
-  .catch(err => res.send(err));
+  .then(result => res.send({ result }));
 });
 
 const server = http.createServer(app);

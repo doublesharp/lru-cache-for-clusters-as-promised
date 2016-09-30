@@ -35,6 +35,20 @@ describe('LRU Cache for Clusters', () => {
     });
   });
 
+  it('should timeout with reject', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/reject')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      response.text.should.eql('ok');
+      return done();
+    });
+  });
+
   it('should set(key, value)', (done) => {
     // run the request
     request(`http://${config.server.host}:${config.server.port}`)
