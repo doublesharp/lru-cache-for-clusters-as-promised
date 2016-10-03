@@ -1,6 +1,6 @@
 eslint:
   enabled: true
-  config: "./eslintrc.js"
+  config: "./eslintrc"
 languages:
   JavaScript: true
 exclude_paths:
