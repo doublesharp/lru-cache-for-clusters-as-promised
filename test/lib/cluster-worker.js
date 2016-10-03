@@ -6,6 +6,7 @@ const LRUCache = require('../../');
 const cache = new LRUCache({
   max: 3,
   stale: false,
+  namespace: 'test-cache',
 });
 
 // create Express App
@@ -41,9 +42,13 @@ app.get('/reject', (req, res) => {
     stale: false,
     timeout: 1,
     failsafe: 'reject',
-    namespace: 'bad-cache2',
+    namespace: 'bad-cache-reject',
   });
-  return cacheBad.get('test')
+  let large = '1234567890';
+  for (let i = 0; i < 17; i += 1) {
+    large += large;
+  }
+  return cacheBad.get(`bad-cache-key-${large}`)
   .then(() => res.send('fail'))
   .catch(() => res.send('ok'));
 });
