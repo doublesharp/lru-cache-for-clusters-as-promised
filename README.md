@@ -14,6 +14,8 @@ Each time you call [`cluster.fork()`](https://nodejs.org/api/cluster.html#cluste
 
 LRU Cache for Clusters as Promised stores a single `lru-cache` on the [`master`](https://nodejs.org/api/cluster.html#cluster_cluster_ismaster) thread which is accessed by the `workers` via IPC messages. The same `lru-cache` is shared between `workers` having a common `master`, so no memory is wasted.
 
+When creating a new instance and `cluster.isMaster === true` the shared cache is checked based on the  and the shared cache is populated, it will be used instead but acted on locally rather than via IPC messages. If the shared cache is not populated a new LRUCache instance is returned.
+
 # install
 ```shell
 npm install --save lru-cache-for-clusters-as-promised
@@ -66,6 +68,12 @@ npm install --save lru-cache-for-clusters-as-promised
   * Return the number of items in the cache.
 * `itemCount()`
   * Return the number of items in the cache - same as `length()`.
+* `max([max])`
+  * Get or update the `max` value for the cache.
+* `maxAge([maxAge])`
+  * Get or update the `maxAge` value for the cache.
+* `stale([true|false])`
+  * Get or update the `stale` value for the cache.
 
 # example usage
 ```javascript

@@ -3,6 +3,12 @@ const config = require('./config');
 const express = require('express');
 const LRUCache = require('../../');
 
+// this will be the SAME cache no matter what module calls it.
+const defaultCache = new LRUCache({
+  max: 1,
+});
+defaultCache.keys();
+
 const cache = new LRUCache({
   max: 3,
   stale: false,
@@ -213,6 +219,45 @@ app.get('/dump', (req, res) => {
   cache.set(config.args.one, config.args.one)
   .then(() => cache.dump())
   .then(result => res.send({ result }));
+});
+
+app.get('/stale', (req, res) => {
+  const vals = [];
+  cache.stale()
+  .then((stale) => {
+    vals.push(stale);
+    cache.stale(true)
+    .then((stale2) => {
+      vals.push(stale2);
+      return res.send(vals);
+    });
+  });
+});
+
+app.get('/max', (req, res) => {
+  const vals = [];
+  cache.max()
+  .then((max) => {
+    vals.push(max);
+    cache.max(10)
+    .then((max2) => {
+      vals.push(max2);
+      return res.send(vals);
+    });
+  });
+});
+
+app.get('/maxAge', (req, res) => {
+  const vals = [];
+  cache.maxAge()
+  .then((maxAge) => {
+    vals.push(maxAge);
+    cache.maxAge(100)
+    .then((maxAge2) => {
+      vals.push(maxAge2);
+      return res.send(vals);
+    });
+  });
 });
 
 const server = http.createServer(app);

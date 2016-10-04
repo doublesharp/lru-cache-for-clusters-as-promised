@@ -2,11 +2,12 @@ const request = require('supertest');
 const should = require('should');
 const config = require('./lib/config');
 
+let master = null;
 describe('LRU Cache for Clusters', () => {
   // run before the tests start
   before((done) => {
     // This will call done with the cluster has forked and the worker is listening
-    require('./lib/cluster-master')(done);
+    master = require('./lib/cluster-master')(done);
   });
 
   afterEach((done) => {
@@ -272,6 +273,60 @@ describe('LRU Cache for Clusters', () => {
     });
   });
 
+  it('should max the cache', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/max')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).equal('[3,10]');
+      return master.getCacheMax()
+      .then((masterMax) => {
+        should(masterMax).equal(10);
+        return done();
+      });
+    });
+  });
+
+  it('should maxAge the cache', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/maxAge')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).equal('[0,100]');
+      return master.getCacheMaxAge()
+      .then((masterMaxAge) => {
+        should(masterMaxAge).equal(100);
+        return done();
+      });
+    });
+  });
+
+  it('should stale the cache', (done) => {
+    // run the request
+    request(`http://${config.server.host}:${config.server.port}`)
+    .get('/stale')
+    .expect(200)
+    .end((err, response) => {
+      if (err) {
+        return done(err);
+      }
+      should(response.text).equal('[null,true]');
+      return master.getCacheStale()
+      .then((masterStale) => {
+        should(masterStale).equal(true);
+        return done();
+      });
+    });
+  });
+
   it('should not respond to messages that are from somewhere else', (done) => {
     // run the request
     request(`http://${config.server.host}:${config.server.port}`)
@@ -284,5 +339,9 @@ describe('LRU Cache for Clusters', () => {
       should(response.text).equal('hello');
       return done();
     });
+  });
+
+  it('should access the shared cache from the master thread', (done) => {
+    master.accessSharedFromMaster(done);
   });
 });

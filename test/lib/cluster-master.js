@@ -44,7 +44,6 @@ cluster.on('fork', (worker) => {
   });
 });
 
-
 // create one process per CPU core
 const workers = os.cpus().length;
 for (let i = 0; i < workers; i += 1) {
@@ -66,4 +65,31 @@ module.exports = (done) => {
       }
     });
   });
+  return {
+    accessSharedFromMaster: (done2) => {
+      const cache = new LRUCache({
+        namespace: 'test-cache',
+      });
+      cache.keys()
+      .then(() => done2());
+    },
+    getCacheMax: () => {
+      const cache = new LRUCache({
+        namespace: 'test-cache',
+      });
+      return cache.max();
+    },
+    getCacheMaxAge: () => {
+      const cache = new LRUCache({
+        namespace: 'test-cache',
+      });
+      return cache.maxAge();
+    },
+    getCacheStale: () => {
+      const cache = new LRUCache({
+        namespace: 'test-cache',
+      });
+      return cache.stale();
+    },
+  };
 };

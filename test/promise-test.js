@@ -4,7 +4,6 @@ const config = require('./lib/config');
 
 describe('LRU Cache as Promised', () => {
   const cache = new LRUCache({
-    namespace: 'default',
     max: 3,
     stale: false,
   });
@@ -181,6 +180,33 @@ describe('LRU Cache as Promised', () => {
     .then(() => cache.itemCount())
     .then((result) => {
       should(result).equal(1);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
+  it('should set the max()', (done) => {
+    cache.max(10)
+    .then((max) => {
+      should(max).equal(10);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
+  it('should set the stale()', (done) => {
+    cache.stale(true)
+    .then((stale) => {
+      should(stale).equal(true);
+      return done();
+    })
+    .catch(err => done(err));
+  });
+
+  it('should set the maxAge()', (done) => {
+    cache.maxAge(10)
+    .then((maxAge) => {
+      should(maxAge).equal(10);
       return done();
     })
     .catch(err => done(err));

@@ -4,7 +4,10 @@
  * @module lru-cache-for-clusters-as-promised
  * @exports LRUCacheForClustersAsPromised
  */
-/* eslint comma-dangle: [2, "always"] */
+
+/* eslint comma-dangle: [2, "always"], strict: 0 */
+
+'use strict';
 
 const cluster = require('cluster');
 const Debug = require('debug');
@@ -46,9 +49,31 @@ if (cluster.isMaster) {
         // constructor request
         case '()': {
           // create a new lru-cache, give it a namespace, and save it locally
-          lru = caches[request.namespace] = new LRUCache(...request.arguments);
-          lru.namespace = request.namespace;
-          sendResponse(lru);
+          if (caches[request.namespace]) {
+            lru = caches[request.namespace];
+          } else {
+            lru = caches[request.namespace] = new LRUCache(...request.arguments);
+          }
+          sendResponse({
+            value: {
+              max: lru.max,
+              maxAge: lru.maxAge,
+              stale: lru.stale,
+              namespace: request.namespace,
+            },
+          });
+          break;
+        }
+        case 'max':
+        case 'maxAge':
+        case 'stale': {
+          lru = caches[request.namespace];
+          if (request.arguments[0]) {
+            lru[request.func] = request.arguments[0];
+          }
+          sendResponse({
+            value: lru[request.func],
+          });
           break;
         }
         case 'decr':
@@ -110,9 +135,6 @@ function LRUCacheForClustersAsPromised(options) {
   // keep a reference as 'this' is lost inside the Promise contexts
   const cache = this;
 
-  // if this is the master thread, we just promisify an lru-cache
-  const lru = cluster.isMaster ? new LRUCache(options) : null;
-
   // this is how the clustered cache differentiates
   cache.namespace = options.namespace || 'default';
 
@@ -121,6 +143,16 @@ function LRUCacheForClustersAsPromised(options) {
 
   // how should timeouts be handled - default is resolve(undefined), otherwise reject(Error)
   cache.failsafe = options.failsafe === 'reject' ? 'reject' : 'resolve';
+
+  // if this is the master thread, we just promisify an lru-cache
+  let lru = null;
+  if (cluster.isMaster) {
+    if (Object.keys(cluster.workers).length && caches[cache.namespace]) {
+      lru = caches[cache.namespace];
+    } else {
+      lru = new LRUCache(options);
+    }
+  }
 
   // return a promise that resolves to the result of the method on
   // the local lru-cache this is the master thread, or from the
@@ -133,6 +165,14 @@ function LRUCacheForClustersAsPromised(options) {
     if (cluster.isMaster) {
       // act on the local lru-cache
       switch (func) {
+        case 'max':
+        case 'maxAge':
+        case 'stale': {
+          if (funcArgs[0]) {
+            lru[func] = funcArgs[0];
+          }
+          return Promise.resolve(lru[func]);
+        }
         case 'decr':
         case 'incr': {
           // get the current value default to 0
@@ -189,6 +229,7 @@ function LRUCacheForClustersAsPromised(options) {
   if (cluster.isWorker) {
     // create a new LRU cache on the master
     promiseTo('()', options)
+    .then(lruOptions => debug('created lru cache on master', lruOptions))
     .catch(err => debug('failed to create lru cache on master', err, options));
   }
 
@@ -210,6 +251,9 @@ function LRUCacheForClustersAsPromised(options) {
     prune: () => promiseTo('prune'),
     length: () => promiseTo('length'),
     itemCount: () => promiseTo('itemCount'),
+    stale: stale => promiseTo('stale', stale),
+    max: max => promiseTo('max', max),
+    maxAge: maxAge => promiseTo('maxAge', maxAge),
   };
 }
 
