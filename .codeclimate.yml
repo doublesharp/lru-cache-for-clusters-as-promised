@@ -5,6 +5,3 @@ languages:
   JavaScript: true
 exclude_paths:
 - ".eslintrc*"
-engines:
-  duplication:
-    enabled: false
