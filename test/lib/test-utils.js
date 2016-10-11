@@ -177,10 +177,11 @@ function TestUtils(cache) {
       .catch(err => cb(err));
     },
     length: (cb) => {
-      cache.set(config.args.one, config.args.one)
+      cache.set(config.args.two, config.args.two)
+      .then(() => cache.set(config.args.three, config.args.three))
       .then(() => cache.length())
       .then((length) => {
-        should(length).equal(1);
+        should(length).equal(2);
         return cb(null, true);
       })
       .catch(err => cb(err));
@@ -214,10 +215,10 @@ function TestUtils(cache) {
       .catch(err => cb(err));
     },
     values: (cb) => {
-      cache.set(config.args.one, config.args.one)
+      cache.set(config.args.two, config.args.two)
       .then(() => cache.values())
       .then((values) => {
-        should(values).deepEqual(['one']);
+        should(values).deepEqual(['two']);
         return cb(null, true);
       })
       .catch(err => cb(err));
@@ -267,9 +268,9 @@ function TestUtils(cache) {
       .catch(err => cb(err));
     },
     setMax: (cb) => {
-      cache.max(10)
+      cache.max(100)
       .then((max) => {
-        should(max).equal(10);
+        should(max).equal(100);
         return cb(null, true);
       })
       .catch(err => cb(err));
@@ -303,14 +304,14 @@ function TestUtils(cache) {
       .catch(err => cb(err));
     },
     addFourAccessOne: (cb) => {
-      cache.set(config.args.one, config.args.one)
-      .then(() => cache.set(config.args.two, config.args.two))
+      cache.set(config.args.four, config.args.four)
       .then(() => cache.set(config.args.three, config.args.three))
-      .then(() => cache.get(config.args.one))
-      .then(() => cache.set(config.args.four, config.args.four))
-      .then(() => cache.get(config.args.one))
+      .then(() => cache.set(config.args.two, config.args.two))
+      .then(() => cache.get(config.args.four))
+      .then(() => cache.set(config.args.one, config.args.one))
+      .then(() => cache.get(config.args.four))
       .then((result) => {
-        should(result).equal(config.args.one);
+        should(result).equal(config.args.four);
         return cb(null, true);
       })
       .catch(err => cb(err));
