@@ -1,9 +1,11 @@
 const request = require('supertest');
-const should = require('should');
 const config = require('./lib/config');
+const TestUtils = require('./lib/test-utils');
 
 let master = null;
 describe('LRU Cache for Clusters', () => {
+  const testUtils = new TestUtils();
+
   // run before the tests start
   before((done) => {
     // This will call done with the cluster has forked and the worker is listening
@@ -13,48 +15,6 @@ describe('LRU Cache for Clusters', () => {
   afterEach((done) => {
     request(`http://${config.server.host}:${config.server.port}`)
     .get('/reset')
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('{"result":0}');
-      return done();
-    });
-  });
-
-  it('should timeout', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/timeout')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      response.text.should.eql('ok');
-      return done();
-    });
-  });
-
-  it('should timeout with reject', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/reject')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      response.text.should.eql('ok');
-      return done();
-    });
-  });
-
-  it('should set(key, value)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/set')
-    .expect(200)
     .end((err) => {
       if (err) {
         return done(err);
@@ -63,281 +23,21 @@ describe('LRU Cache for Clusters', () => {
     });
   });
 
-  it('should get(key)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/get')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      response.text.should.equal(config.args.one);
-      return done();
-    });
-  });
-
-  it('should del(key)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/del')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).be.empty(null);
-      return done();
-    });
-  });
-
-  it('should incr(key)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/incr')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).eql('[1,2]');
-      return done();
-    });
-  });
-
-  it('should incr(key, 2)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/incr2')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).eql('[2,4]');
-      return done();
-    });
-  });
-
-  it('should decr(key)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/decr')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).eql('[-1,-2]');
-      return done();
-    });
-  });
-
-  it('should decr(key, 2)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/decr2')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).eql('[-2,-4]');
-      return done();
-    });
-  });
-
-  it('should add four keys and have the first fall out', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/one-two-three-four')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).be.empty();
-      return done();
-    });
-  });
-
-  it('should add four keys and then access the first so the second falls out', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/one-two-three-four-one')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).be.equal(config.args.one);
-      return done();
-    });
-  });
-
-  it('should peek(key)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/peek')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('["one",null]');
-      return done();
-    });
-  });
-
-  it('should has(key)', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/has')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).be.equal('true');
-      return done();
-    });
-  });
-
-  it('should return length/itemCount', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/length-itemcount')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).be.equal('[1,1]');
-      return done();
-    });
-  });
-
-  it('should reset the cache', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/reset')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).be.equal('{"result":0}');
-      return done();
-    });
-  });
-
-  it('should return keys/values', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/keys-values')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('[["one"],["one"]]');
-      return done();
-    });
-  });
-
-  it('should prune the cache', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/prune')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('{"result":1}');
-      return done();
-    });
-  });
-
-  it('should dump the cache', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/dump')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('{"result":[{"k":"one","v":"one","e":0}]}');
-      return done();
-    });
-  });
-
-  it('should max the cache', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/max')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('[3,10]');
-      return master.getCacheMax()
-      .then((masterMax) => {
-        should(masterMax).equal(10);
-        return done();
+  ['tests', 'clusterTests'].forEach((test) => {
+    Object.keys(testUtils[test]).forEach((method) => {
+      it(`should ${testUtils[test][method]}`, (done) => {
+        // run the request
+        request(`http://${config.server.host}:${config.server.port}`)
+        .get(`/${method}`)
+        .expect(200)
+        .end((err, response) => {
+          if (err) {
+            return done(err);
+          }
+          response.body.should.equal(true);
+          return done();
+        });
       });
-    });
-  });
-
-  it('should maxAge the cache', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/maxAge')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('[0,100]');
-      return master.getCacheMaxAge()
-      .then((masterMaxAge) => {
-        should(masterMaxAge).equal(100);
-        return done();
-      });
-    });
-  });
-
-  it('should stale the cache', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/stale')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('[null,true]');
-      return master.getCacheStale()
-      .then((masterStale) => {
-        should(masterStale).equal(true);
-        return done();
-      });
-    });
-  });
-
-  it('should not respond to messages that are from somewhere else', (done) => {
-    // run the request
-    request(`http://${config.server.host}:${config.server.port}`)
-    .get('/hi')
-    .expect(200)
-    .end((err, response) => {
-      if (err) {
-        return done(err);
-      }
-      should(response.text).equal('hello');
-      return done();
     });
   });
 
