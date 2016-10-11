@@ -207,9 +207,13 @@ function TestUtils(cache) {
     },
     keys: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.keys())
+      .then((result) => {
+        should(result).equal(true);
+        return cache.keys();
+      })
       .then((keys) => {
-        should(keys).deepEqual([config.args.one]);
+        should(keys.length).equal(1);
+        should(keys[0]).equal(config.args.one);
         return cb(null, true);
       })
       .catch(err => cb(err));
