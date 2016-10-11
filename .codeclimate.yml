@@ -1,7 +1,17 @@
-eslint:
-  enabled: true
-  config: "./eslintrc"
-languages:
-  JavaScript: true
+engines:
+  duplication:
+    enabled: true
+    config:
+      languages:
+        - javascript
+  eslint:
+    enabled: true
+    config: "./.eslintrc"
+  fixme:
+    enabled: true
+ratings:
+  paths:
+  - "**.js"
 exclude_paths:
-- ".eslintrc*"
+- ".eslintrc"
+- "test/**"
