@@ -36,9 +36,13 @@ function TestUtils(cache) {
       setStale: 'stale(true)',
     },
     hi: (cb) => {
+      let responded = false;
       const callback = (response) => {
-        should(response).equal('hello');
-        cb(null, true);
+        if (!responded) {
+          responded = true;
+          should(response).equal('hello');
+          cb(null, true);
+        }
       };
       process.on('message', response => callback && callback(response));
       process.send('hi');
