@@ -157,7 +157,7 @@ function TestUtils(cache) {
       .then(() => cache.set(config.args.three, config.args.three))
       .then(() => cache.peek(config.args.one))
       .then((result) => {
-        should('one').equal(result);
+        should(result).equal(config.args.one);
         return cache.set(config.args.four, config.args.four);
       })
       .then(() => cache.get(config.args.one))
@@ -209,7 +209,7 @@ function TestUtils(cache) {
       cache.set(config.args.one, config.args.one)
       .then(() => cache.keys())
       .then((keys) => {
-        should(keys).deepEqual(['one']);
+        should(keys).deepEqual([config.args.one]);
         return cb(null, true);
       })
       .catch(err => cb(err));
@@ -218,7 +218,7 @@ function TestUtils(cache) {
       cache.set(config.args.two, config.args.two)
       .then(() => cache.values())
       .then((values) => {
-        should(values).deepEqual(['two']);
+        should(values).deepEqual([config.args.two]);
         return cb(null, true);
       })
       .catch(err => cb(err));
@@ -234,11 +234,11 @@ function TestUtils(cache) {
       .catch(err => cb(err));
     },
     dump: (cb) => {
-      cache.set(config.args.one, config.args.one)
+      cache.set(config.args.one, config.args.two)
       .then(() => cache.dump())
       .then((dump) => {
-        should(dump[0].k).equal('one');
-        should(dump[0].v).equal('one');
+        should(dump[0].k).equal(config.args.one);
+        should(dump[0].v).equal(config.args.two);
         return cb(null, true);
       })
       .catch(err => cb(err));
@@ -293,7 +293,10 @@ function TestUtils(cache) {
     },
     addFour: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.set(config.args.two, config.args.two))
+      .then((value) => {
+        should(value).equal(true);
+        return cache.set(config.args.two, config.args.two);
+      })
       .then(() => cache.set(config.args.three, config.args.three))
       .then(() => cache.set(config.args.four, config.args.four))
       .then(() => cache.get(config.args.one))
@@ -304,14 +307,29 @@ function TestUtils(cache) {
       .catch(err => cb(err));
     },
     addFourAccessOne: (cb) => {
-      cache.set(config.args.four, config.args.four)
-      .then(() => cache.set(config.args.three, config.args.three))
-      .then(() => cache.set(config.args.two, config.args.two))
-      .then(() => cache.get(config.args.four))
-      .then(() => cache.set(config.args.one, config.args.one))
-      .then(() => cache.get(config.args.four))
+      cache.set(config.args.one, config.args.one)
+      .then((value) => {
+        should(value).equal(true);
+        return cache.set(config.args.two, config.args.two);
+      })
+      .then((value) => {
+        should(value).equal(true);
+        return cache.set(config.args.three, config.args.three);
+      })
+      .then((value) => {
+        should(value).equal(true);
+        return cache.get(config.args.one);
+      })
+      .then((value) => {
+        should(value).equal(config.args.one);
+        return cache.set(config.args.four, config.args.four);
+      })
+      .then((value) => {
+        should(value).equal(true);
+        return cache.get(config.args.one);
+      })
       .then((result) => {
-        should(result).equal(config.args.four);
+        should(result).equal(config.args.one);
         return cb(null, true);
       })
       .catch(err => cb(err));
