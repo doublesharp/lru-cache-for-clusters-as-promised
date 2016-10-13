@@ -132,30 +132,10 @@ cache.set(key, user)
 # process flow
 
 **Clustered cache on master thread for clustered environments**
-```
-                                                                +-----+
-+--------+  +---------------+  +---------+  +---------------+   # M T #
-|        +--> LRU Cache for +-->         +--> Worker Sends  +--># A H #
-| Worker |  |  Clusters as  |  | Promise |  |  IPC Message  |   # S R #
-|        <--+   Promised    <--+         <--+   to Master   <---# T E #
-+--------+  +---------------+  +---------+  +---------------+   # E A #
-                                                                # R D #
-v---------------------------------------------------------------+-----+
-+-----+
-* W T *   +--------------+  +--------+  +-----------+
-* O H *--->   Master     +-->        +--> LRU Cache |
-* R R *   | IPC Message  |  | Master |  |    by     |
-* K E *<--+  Listener    <--+        <--+ namespace |
-* E A *   +--------------+  +--------+  +-----------+
-* R D *
-+-----+
-```
+
+![Clustered/Worker Thread](https://www.websequencediagrams.com/files/render?link=RqoArRgR8ZFZCL9ELm9C)
+
 
 **Promisified for non-clustered environments**
-```
-+---------------+  +---------------+  +---------+  +-----------+
-|               +--> LRU Cache for +-->         +-->           |
-| Non-clustered |  |  Clusters as  |  | Promise |  | LRU Cache |
-|               <--+   Promised    <--+         <--+           |
-+---------------+  +---------------+  +---------+  +-----------+
-```
+
+![Single/Master Thread](https://www.websequencediagrams.com/files/render?link=OfdL9HvP0ntvqPSAavdV)
