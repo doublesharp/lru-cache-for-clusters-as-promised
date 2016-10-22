@@ -35,13 +35,15 @@ npm install --save lru-cache-for-clusters-as-promised
   * The maximum age for an item to be considered valid
 * `stale: true|false`
   * When `true` expired items are return before they are removed rather than `undefined`
+* `prune: false|crontime string`, defaults to `false`
+  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds. Also works in single threaded environments not using the `cluster` module.
 
 > ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
 
 # api
 
-* `set(key, value)`
-  * Sets a value for a key.
+* `set(key, value, maxAge)`
+  * Sets a value for a key. Specifying the `maxAge` will cause the value to expire per the `stale` value or when `prune`d.
 * `get(key)`
   * Returns a value for a key.
 * `peek(key)`

@@ -1,6 +1,9 @@
 const config = require('./config');
+const cluster = require('cluster');
 const should = require('should');
 const LRUCache = require('../../');
+
+const member = cluster.isWorker ? 'worker' : 'master';
 
 function TestUtils(cache) {
   return {
@@ -10,6 +13,7 @@ function TestUtils(cache) {
       reject: 'timeout with reject',
     },
     tests: {
+      pruneJob: 'prune cache using cron job',
       set: 'set(key, value)',
       get: 'get(key)',
       del: 'del(key)',
@@ -52,7 +56,7 @@ function TestUtils(cache) {
         max: 1,
         stale: false,
         timeout: 1,
-        namespace: 'bad-cache-resolve',
+        namespace: `bad-cache-resolve-${member}`,
       });
       let large = '1234567890';
       for (let i = 0; i < 17; i += 1) {
@@ -68,7 +72,7 @@ function TestUtils(cache) {
         stale: false,
         timeout: 1,
         failsafe: 'reject',
-        namespace: 'bad-cache-reject',
+        namespace: `bad-cache-reject-${member}`,
       });
       let large = '1234567890';
       for (let i = 0; i < 17; i += 1) {
@@ -77,6 +81,36 @@ function TestUtils(cache) {
       return cacheBad.get(`bad-cache-key-${large}`)
       .then(() => cb('fail'))
       .catch(() => cb(null, true));
+    },
+    pruneJob: (cb) => {
+      const prunedCache = new LRUCache({
+        max: 10,
+        stale: true,
+        maxAge: 100,
+        namespace: `pruned-cache-${member}`,
+        prune: '*/1 * * * * *',
+      });
+      prunedCache.set(config.args.one, config.args.one)
+      .then(() => prunedCache.set(config.args.two, config.args.two, 2000))
+      .then(() => prunedCache.itemCount())
+      .then((itemCount) => {
+        // we should see 2 items in the cache
+        should(itemCount).equal(2);
+        // check again in 1100 ms
+        setTimeout(() => {
+          // one of the items should have been removed based on the expiration
+          prunedCache.itemCount()
+          .then((itemCount2) => {
+            try {
+              should(itemCount2).equal(1);
+              return cb(null, true);
+            } catch (err) {
+              return cb(err);
+            }
+          });
+        }, 1100);
+      })
+      .catch(err => cb(err));
     },
     set: (cb) => {
       cache.set(config.args.one, config.args.one)

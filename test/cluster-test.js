@@ -34,8 +34,7 @@ describe('LRU Cache for Clusters', () => {
           if (err) {
             return done(err);
           }
-          response.body.should.equal(true);
-          return done();
+          return response.body === true ? done() : done(new Error(response.body));
         });
       });
     });

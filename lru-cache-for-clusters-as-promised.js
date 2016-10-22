@@ -10,11 +10,13 @@
 'use strict';
 
 const cluster = require('cluster');
+const CronJob = require('cron').CronJob;
 const Debug = require('debug');
 const uuid = require('uuid');
 const LRUCache = require('lru-cache');
 
 const debug = new Debug('lru-cache-for-clusters-as-promised');
+const messages = new Debug('lru-cache-for-clusters-as-promised-messages');
 
 // lru caches by namespace on the master
 const caches = {};
@@ -25,6 +27,21 @@ const callbacks = {};
 // use to identify messages from our module
 const source = 'lru-cache-for-clusters-as-promised';
 
+function startPruneCronJob(cache, cronTime) {
+  debug('Creating cache prune job.', cache);
+  const job = new CronJob({
+    cronTime,
+    onTick: () => {
+      debug('Pruning cache', cache);
+      cache.prune();
+    },
+    start: true,
+    runOnInit: true,
+  });
+  job.start();
+  return job;
+}
+
 // only run on the master thread
 if (cluster.isMaster) {
   // for each worker created...
@@ -32,6 +49,7 @@ if (cluster.isMaster) {
     // wait for the worker to send a message
     worker.on('message', (request) => {
       if (request.source !== source) return;
+      messages(`Master recieved message from worker ${worker.id}`, request);
 
       // send a response back to the worker thread
       function sendResponse(data) {
@@ -39,6 +57,7 @@ if (cluster.isMaster) {
         response.source = source;
         response.id = request.id;
         response.func = request.func;
+        messages(`Master sending response to worker ${worker.id}`, response);
         worker.send(response);
       }
 
@@ -53,6 +72,10 @@ if (cluster.isMaster) {
             lru = caches[request.namespace];
           } else {
             lru = caches[request.namespace] = new LRUCache(...request.arguments);
+            // start a job to clean the cache
+            if (request.arguments[0].prune) {
+              lru.job = startPruneCronJob(lru, request.arguments[0].prune);
+            }
           }
           sendResponse({
             value: {
@@ -114,6 +137,7 @@ if (cluster.isMaster) {
 // run on each worker thread
 if (cluster.isWorker) {
   process.on('message', (response) => {
+    messages(`Worker ${cluster.worker.id} recieved message`, response);
     // look up the callback based on the response ID, delete it, then call it
     if (response.source !== source || !callbacks[response.id]) return;
     const callback = callbacks[response.id];
@@ -151,6 +175,9 @@ function LRUCacheForClustersAsPromised(options) {
       lru = caches[cache.namespace];
     } else {
       lru = new LRUCache(options);
+      if (options.prune) {
+        lru.job = startPruneCronJob(lru, options.prune);
+      }
     }
   }
 
@@ -237,7 +264,7 @@ function LRUCacheForClustersAsPromised(options) {
   // and itemCount() are functions and not properties. All functions
   // return a Promise.
   return {
-    set: (key, value) => promiseTo('set', key, value),
+    set: (key, value, maxAge) => promiseTo('set', key, value, maxAge),
     get: key => promiseTo('get', key),
     peek: key => promiseTo('peek', key),
     del: key => promiseTo('del', key),
