@@ -5,15 +5,19 @@ const LRUCache = require('../../');
 const TestUtils = require('./test-utils');
 
 // this will be the SAME cache no matter which module calls it.
+const initCache = new LRUCache();
+initCache.keys();
+// this will be the SAME cache no matter which module calls it.
 const defaultCache = new LRUCache({
   max: 1,
+  maxAge: 100000,
+  stale: true,
 });
 defaultCache.keys();
 
 const cache = new LRUCache({
-  max: 3,
-  stale: false,
   namespace: 'test-cache',
+  max: 3,
 });
 
 const testUtils = new TestUtils(cache);

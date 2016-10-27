@@ -3,6 +3,7 @@ const TestUtils = require('./lib/test-utils');
 
 describe('LRU Cache as Promised', () => {
   const cache = new LRUCache({
+    namespace: 'lru-cache-as-promised',
     max: 3,
     stale: false,
   });

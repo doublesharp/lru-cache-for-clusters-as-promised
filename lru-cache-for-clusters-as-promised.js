@@ -168,7 +168,10 @@ if (cluster.isWorker) {
  *
  * @param Object options The lru-cache options. Properties can be set, functions cannot.
  */
-function LRUCacheForClustersAsPromised(options) {
+function LRUCacheForClustersAsPromised(opts) {
+  // default to some empty options
+  const options = opts || {};
+
   // keep a reference as 'this' is lost inside the Promise contexts
   const cache = this;
 
@@ -273,7 +276,10 @@ function LRUCacheForClustersAsPromised(options) {
     // create a new LRU cache on the master
     promiseTo('()', options)
     .then(lruOptions => debug('created lru cache on master', lruOptions))
-    .catch(err => debug('failed to create lru cache on master', err, options));
+    .catch((err) => {
+      /* istanbul ignore next */
+      debug('failed to create lru cache on master', err, options);
+    });
   }
 
   // the lru-cache functions we are able to provide. Note that length()
