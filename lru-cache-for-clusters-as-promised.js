@@ -67,10 +67,22 @@ if (cluster.isMaster) {
       switch (request.func) {
         // constructor request
         case '()': {
+          let created = false;
+          const options = request.arguments[0];
           // create a new lru-cache, give it a namespace, and save it locally
           if (caches[request.namespace]) {
             lru = caches[request.namespace];
+            if (options.max && options.max !== lru.max) {
+              lru.max = options.max;
+            }
+            if (options.maxAge && options.maxAge !== lru.maxAge) {
+              lru.maxAge = options.maxAge;
+            }
+            if (options.stale && options.stale !== lru.stale) {
+              lru.stale = options.stale;
+            }
           } else {
+            created = true;
             lru = caches[request.namespace] = new LRUCache(...request.arguments);
             // start a job to clean the cache
             if (request.arguments[0].prune) {
@@ -79,10 +91,11 @@ if (cluster.isMaster) {
           }
           sendResponse({
             value: {
+              namespace: request.namespace,
+              isnew: created,
               max: lru.max,
               maxAge: lru.maxAge,
               stale: lru.stale,
-              namespace: request.namespace,
             },
           });
           break;
@@ -173,8 +186,11 @@ function LRUCacheForClustersAsPromised(options) {
   if (cluster.isMaster) {
     if (Object.keys(cluster.workers).length && caches[cache.namespace]) {
       lru = caches[cache.namespace];
+      debug('Loaded cache out of shared namespace');
     } else {
+      debug('Created new LRU cache');
       lru = new LRUCache(options);
+      caches[cache.namespace] = lru;
       if (options.prune) {
         lru.job = startPruneCronJob(lru, options.prune);
       }
@@ -239,7 +255,7 @@ function LRUCacheForClustersAsPromised(options) {
           return reject(new Error('Timed out in isFailed()'));
         }
         return resolve(undefined);
-      }, cache.timeout);
+      }, func === '()' ? 5000 : cache.timeout);
       // set the callback for this id to resolve the promise
       callbacks[request.id] = (result) => {
         if (failsafeTimeout) {
