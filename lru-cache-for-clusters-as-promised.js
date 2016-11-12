@@ -5,7 +5,7 @@
  * @exports LRUCacheForClustersAsPromised
  */
 
-/* eslint comma-dangle: [2, "always"], strict: 0 */
+/* eslint strict: 0 */
 
 'use strict';
 
@@ -72,15 +72,12 @@ if (cluster.isMaster) {
           // create a new lru-cache, give it a namespace, and save it locally
           if (caches[request.namespace]) {
             lru = caches[request.namespace];
-            if (options.max && options.max !== lru.max) {
-              lru.max = options.max;
-            }
-            if (options.maxAge && options.maxAge !== lru.maxAge) {
-              lru.maxAge = options.maxAge;
-            }
-            if (options.stale && options.stale !== lru.stale) {
-              lru.stale = options.stale;
-            }
+            // update property values as needed
+            ['max', 'maxAge', 'stale'].forEach((prop) => {
+              if (options[prop] && options[prop] !== lru[prop]) {
+                lru[prop] = options[prop];
+              }
+            });
           } else {
             created = true;
             lru = caches[request.namespace] = new LRUCache(...request.arguments);
