@@ -285,6 +285,8 @@ function LRUCacheForClustersAsPromised(opts) {
   return {
     set: (key, value, maxAge) => promiseTo('set', key, value, maxAge),
     get: key => promiseTo('get', key),
+    setObject: (key, value, maxAge) => promiseTo('set', key, JSON.stringify(value), maxAge),
+    getObject: key => promiseTo('get', key).then(value => Promise.resolve(JSON.parse(value))),
     peek: key => promiseTo('peek', key),
     del: key => promiseTo('del', key),
     has: key => promiseTo('has', key),

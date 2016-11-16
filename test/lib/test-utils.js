@@ -13,6 +13,7 @@ function TestUtils(cache) {
       reject: 'timeout with reject',
     },
     tests: {
+      objects: 'get and set objects',
       pruneJob: 'prune cache using cron job',
       set: 'set(key, value)',
       get: 'get(key)',
@@ -38,6 +39,17 @@ function TestUtils(cache) {
       setMax: 'max(10)',
       setMaxAge: 'maxAge(10)',
       setStale: 'stale(true)',
+    },
+    objects: (cb) => {
+      const myObj = { foo: 'bar' };
+      cache.setObject(1, myObj)
+      .then(() => cache.getObject(1))
+      .then((obj) => {
+        should(obj).not.equal(null);
+        should(obj.foo).equal('bar');
+        cb(null, true);
+      })
+      .catch(err => cb(err));
     },
     hi: (cb) => {
       let responded = false;
