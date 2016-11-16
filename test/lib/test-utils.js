@@ -14,6 +14,7 @@ function TestUtils(cache) {
     },
     tests: {
       objects: 'get and set objects',
+      null_objects: 'null objects should be ok',
       pruneJob: 'prune cache using cron job',
       set: 'set(key, value)',
       get: 'get(key)',
@@ -47,6 +48,15 @@ function TestUtils(cache) {
       .then((obj) => {
         should(obj).not.equal(null);
         should(obj.foo).equal('bar');
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    null_objects: (cb) => {
+      cache.setObject(1, undefined)
+      .then(() => cache.getObject(1))
+      .then((obj) => {
+        should(obj).equal(undefined);
         cb(null, true);
       })
       .catch(err => cb(err));
