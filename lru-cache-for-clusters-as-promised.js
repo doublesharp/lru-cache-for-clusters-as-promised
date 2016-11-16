@@ -184,7 +184,7 @@ function LRUCacheForClustersAsPromised(opts) {
   // if this is the master thread, we just promisify an lru-cache
   let lru = null;
   if (cluster.isMaster) {
-    if (Object.keys(cluster.workers).length && caches[cache.namespace]) {
+    if (caches[cache.namespace]) {
       lru = caches[cache.namespace];
       debug('Loaded cache out of shared namespace');
     } else {
