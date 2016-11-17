@@ -210,14 +210,14 @@ function LRUCacheForClustersAsPromised(opts) {
   if (cluster.isMaster) {
     if (caches[cache.namespace]) {
       lru = caches[cache.namespace];
-      debug('Loaded cache out of shared namespace');
+      debug(`Loaded cache from shared namespace ${cache.namespace}`);
     } else {
-      debug('Created new LRU cache');
       lru = new LRUCache(options);
       caches[cache.namespace] = lru;
       if (options.prune) {
         lru.job = startPruneCronJob(lru, options.prune, cache.namespace);
       }
+      debug(`Created new LRU cache ${cache.namespace}`);
     }
   }
 
@@ -230,7 +230,8 @@ function LRUCacheForClustersAsPromised(opts) {
     // the rest of the args are the function arguments of N length
     const funcArgs = Array.prototype.slice.call(args, 1, args.length);
     if (cluster.isMaster) {
-      // act on the local lru-cache
+      // acting on the local lru-cache
+      messages(cache.namespace, args);
       switch (func) {
         case 'max':
         case 'maxAge':
