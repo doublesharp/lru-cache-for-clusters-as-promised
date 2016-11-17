@@ -13,6 +13,12 @@ function TestUtils(cache) {
       reject: 'timeout with reject',
     },
     tests: {
+      mSet: 'mSet values',
+      mSetNull: 'mSet null pairs',
+      mGet: 'mGet values',
+      mGetNull: 'mGet with null keys',
+      mDel: 'mGet keys',
+      mDelNull: 'mDel with null keys',
       objects: 'get and set objects',
       null_objects: 'null objects should be ok',
       pruneJob: 'prune cache using cron job',
@@ -40,6 +46,84 @@ function TestUtils(cache) {
       setMax: 'max(10)',
       setMaxAge: 'maxAge(10)',
       setStale: 'stale(true)',
+    },
+    mSet: (cb) => {
+      const pairs = {
+        foo: 'bar',
+        bizz: 'buzz',
+      };
+      cache.mSet(pairs)
+      .then(() => cache.get('bizz'))
+      .then((value) => {
+        should(value).equal('buzz');
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    mSetNull: (cb) => {
+      const pairs = null;
+      cache.mSet(pairs)
+      .then(() => cache.mSet('string'))
+      .then(() => cache.mSet(['array']))
+      .then(() => {
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    mGet: (cb) => {
+      const pairs = {
+        foo: 'bar',
+        bizz: 'buzz',
+      };
+      cache.mSet(pairs)
+      .then(() => cache.mGet(['bizz', 'foo']))
+      .then((values) => {
+       // should(values).not.equal(undefined);
+        should(values.bizz).equal('buzz');
+        should(values.foo).equal('bar');
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    mGetNull: (cb) => {
+      cache.mGet('string')
+      .then((values) => {
+        should(values).deepEqual({});
+        return cache.mGet(null);
+      })
+      .then((values) => {
+        should(values).deepEqual({});
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    mDel: (cb) => {
+      const pairs = {
+        my: 'bar',
+        get: 'buzz',
+      };
+      cache.mSet(pairs)
+      .then(() => cache.mDel(['my', 'get']))
+      .then(() => cache.get('get'))
+      .then((value) => {
+        should(value).equal(undefined);
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    mDelNull: (cb) => {
+      const pairs = {
+        foo: 'whamo',
+        bizz: 'blamo',
+      };
+      cache.mSet(pairs)
+      .then(() => cache.mDel(null))
+      .then(() => cache.get('bizz'))
+      .then((value) => {
+        should(value).equal('blamo');
+        cb(null, true);
+      })
+      .catch(err => cb(err));
     },
     objects: (cb) => {
       const myObj = { foo: 'bar' };

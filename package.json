@@ -1,6 +1,6 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.4.6",
+  "version": "1.5.0",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {

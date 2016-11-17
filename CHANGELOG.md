@@ -1,3 +1,7 @@
+1.5.0 / 2016-11-16
+==================
+
+  * Add support for `mGet([key])`, `mSet({key: value}, maxAge)`, and `mDel([key])`.
 
 1.4.6 / 2016-11-16
 ==================

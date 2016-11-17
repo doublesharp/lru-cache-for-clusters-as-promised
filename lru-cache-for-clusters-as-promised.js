@@ -64,11 +64,13 @@ if (cluster.isMaster) {
       // try to load an existing lru-cache
       let lru = caches[request.namespace];
 
+      const params = request.arguments;
+
       switch (request.func) {
         // constructor request
         case '()': {
           let created = false;
-          const options = request.arguments[0];
+          const options = params[0];
           // create a new lru-cache, give it a namespace, and save it locally
           if (caches[request.namespace]) {
             lru = caches[request.namespace];
@@ -80,10 +82,10 @@ if (cluster.isMaster) {
             });
           } else {
             created = true;
-            lru = caches[request.namespace] = new LRUCache(...request.arguments);
+            lru = caches[request.namespace] = new LRUCache(...params);
             // start a job to clean the cache
-            if (request.arguments[0].prune) {
-              lru.job = startPruneCronJob(lru, request.arguments[0].prune);
+            if (params[0].prune) {
+              lru.job = startPruneCronJob(lru, params[0].prune);
             }
           }
           sendResponse({
@@ -101,8 +103,8 @@ if (cluster.isMaster) {
         case 'maxAge':
         case 'stale': {
           lru = caches[request.namespace];
-          if (request.arguments[0]) {
-            lru[request.func] = request.arguments[0];
+          if (params[0]) {
+            lru[request.func] = params[0];
           }
           sendResponse({
             value: lru[request.func],
@@ -112,16 +114,38 @@ if (cluster.isMaster) {
         case 'decr':
         case 'incr': {
           // get the current value
-          let value = lru.get(request.arguments[0]);
+          let value = lru.get(params[0]);
           // maybe initialize and increment
           value = (typeof value === 'number' ? value : 0) +
-            ((request.arguments[1] || 1) * (request.func === 'decr' ? -1 : 1));
+            ((params[1] || 1) * (request.func === 'decr' ? -1 : 1));
           // set the new value
-          lru.set(request.arguments[0], value);
+          lru.set(params[0], value);
           // send the new value
           sendResponse({
             value,
           });
+          break;
+        }
+        case 'mGet': {
+          const mGetValues = {};
+          if (params[0] && params[0] instanceof Array) {
+            params[0].map(key => (mGetValues[key] = lru.get(key)));
+          }
+          sendResponse({ value: mGetValues });
+          break;
+        }
+        case 'mSet': {
+          if (params[0] && params[0] instanceof Object) {
+            Object.keys(params[0]).map(key => lru.set(key, params[0][key], params[1]));
+          }
+          sendResponse({ value: true });
+          break;
+        }
+        case 'mDel': {
+          if (params[0] && params[0] instanceof Array) {
+            params[0].map(key => lru.del(key));
+          }
+          sendResponse({ value: true });
           break;
         }
         // return the property value
@@ -135,7 +159,7 @@ if (cluster.isMaster) {
         // return the function value
         default: {
           sendResponse({
-            value: lru[request.func](...request.arguments),
+            value: lru[request.func](...params),
           });
           break;
         }
@@ -228,6 +252,25 @@ function LRUCacheForClustersAsPromised(opts) {
           // resolve the new value
           return Promise.resolve(value);
         }
+        case 'mGet': {
+          const mGetValues = {};
+          if (funcArgs[0] && funcArgs[0] instanceof Array) {
+            funcArgs[0].map(key => (mGetValues[key] = lru.get(key)));
+          }
+          return Promise.resolve(mGetValues);
+        }
+        case 'mSet': {
+          if (funcArgs[0] && funcArgs[0] instanceof Object) {
+            Object.keys(funcArgs[0]).map(key => lru.set(key, funcArgs[0][key], funcArgs[1]));
+          }
+          return Promise.resolve(true);
+        }
+        case 'mDel': {
+          if (funcArgs[0] && funcArgs[0] instanceof Array) {
+            funcArgs[0].map(key => lru.del(key));
+          }
+          return Promise.resolve(true);
+        }
         case 'itemCount':
         case 'length': {
           // return the property value
@@ -287,8 +330,11 @@ function LRUCacheForClustersAsPromised(opts) {
     get: key => promiseTo('get', key),
     setObject: (key, value, maxAge) => promiseTo('set', key, JSON.stringify(value), maxAge),
     getObject: key => promiseTo('get', key).then(value => Promise.resolve(value ? JSON.parse(value) : undefined)),
-    peek: key => promiseTo('peek', key),
     del: key => promiseTo('del', key),
+    mGet: keys => promiseTo('mGet', keys),
+    mSet: (keyPairs, maxAge) => promiseTo('mSet', keyPairs, maxAge),
+    mDel: keys => promiseTo('mDel', keys),
+    peek: key => promiseTo('peek', key),
     has: key => promiseTo('has', key),
     incr: (key, amount) => promiseTo('incr', key, amount),
     decr: (key, amount) => promiseTo('decr', key, amount),
