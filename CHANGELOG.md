@@ -1,3 +1,9 @@
+1.5.1 / 2016-11-17
+==================
+
+  * Add support for `mSetObjects()` and `mGetObjects()`
+  * Pass namespace through to pruning job for debugging 
+
 1.5.0 / 2016-11-16
 ==================
 

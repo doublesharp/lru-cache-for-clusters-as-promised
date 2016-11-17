@@ -44,17 +44,21 @@ npm install --save lru-cache-for-clusters-as-promised
 
 * `set(key, value, maxAge)`
   * Sets a value for a key. Specifying the `maxAge` will cause the value to expire per the `stale` value or when `prune`d.
-* `mSet({ key1: 1, key2, 2...}, maxAge)`
+* `mSet({ key1: 1, key2: 2, ...}, maxAge)`
   * Sets multiple key-value pairs in the cache at one time.
+* `mSetObjects({ key1: { obj: 1 }, key2: { obj: 2 }, ...}, maxAge)`
+  * Sets multiple key-value pairs in the cache at one time, where the value is an object.
 * `get(key)`
   * Returns a value for a key.
-* `mGet([key1, key2...])`
+* `mGet([key1, key2, ...])`
   * Returns values for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`.
+* `mGetObjects([key1, key2, ...])`
+  * Returns values as objects for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`.
 * `peek(key)`
   * Returns the value for a key without updating its last access time.
 * `del(key)`
   * Removes a value from the cache.
-* `mDel([key])`
+* `mDel([key1, key2...])`
   * Removes multiple keys from the cache..
 * `has(key)`
   * Returns true if the key exists in the cache.

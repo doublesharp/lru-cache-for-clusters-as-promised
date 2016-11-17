@@ -27,12 +27,12 @@ const callbacks = {};
 // use to identify messages from our module
 const source = 'lru-cache-for-clusters-as-promised';
 
-function startPruneCronJob(cache, cronTime) {
+function startPruneCronJob(cache, cronTime, namespace) {
   debug('Creating cache prune job.', cache);
   const job = new CronJob({
     cronTime,
     onTick: () => {
-      debug('Pruning cache', cache);
+      debug(`Pruning cache ${namespace}`, cache);
       cache.prune();
     },
     start: true,
@@ -85,7 +85,7 @@ if (cluster.isMaster) {
             lru = caches[request.namespace] = new LRUCache(...params);
             // start a job to clean the cache
             if (params[0].prune) {
-              lru.job = startPruneCronJob(lru, params[0].prune);
+              lru.job = startPruneCronJob(lru, params[0].prune, request.namespace);
             }
           }
           sendResponse({
@@ -216,7 +216,7 @@ function LRUCacheForClustersAsPromised(opts) {
       lru = new LRUCache(options);
       caches[cache.namespace] = lru;
       if (options.prune) {
-        lru.job = startPruneCronJob(lru, options.prune);
+        lru.job = startPruneCronJob(lru, options.prune, cache.namespace);
       }
     }
   }
@@ -332,7 +332,19 @@ function LRUCacheForClustersAsPromised(opts) {
     getObject: key => promiseTo('get', key).then(value => Promise.resolve(value ? JSON.parse(value) : undefined)),
     del: key => promiseTo('del', key),
     mGet: keys => promiseTo('mGet', keys),
-    mSet: (keyPairs, maxAge) => promiseTo('mSet', keyPairs, maxAge),
+    mSet: (pairs, maxAge) => promiseTo('mSet', pairs, maxAge),
+    mGetObjects: keys => promiseTo('mGet', keys).then((pairs) => {
+      const objs = {};
+      return Promise.all(
+        Object.keys(pairs).map(key => Promise.resolve((objs[key] = JSON.parse(pairs[key]))))
+      ).then(() => Promise.resolve(objs));
+    }),
+    mSetObjects: (pairs, maxAge) => {
+      const objs = {};
+      return Promise.all(
+        Object.keys(pairs).map(key => Promise.resolve((objs[key] = JSON.stringify(pairs[key]))))
+      ).then(() => promiseTo('mSet', objs, maxAge));
+    },
     mDel: keys => promiseTo('mDel', keys),
     peek: key => promiseTo('peek', key),
     has: key => promiseTo('has', key),

@@ -17,6 +17,7 @@ function TestUtils(cache) {
       mSetNull: 'mSet null pairs',
       mGet: 'mGet values',
       mGetNull: 'mGet with null keys',
+      mGetAndSetObjects: 'mGetObjects and mSetObjects',
       mDel: 'mGet keys',
       mDelNull: 'mDel with null keys',
       objects: 'get and set objects',
@@ -81,6 +82,20 @@ function TestUtils(cache) {
        // should(values).not.equal(undefined);
         should(values.bizz).equal('buzz');
         should(values.foo).equal('bar');
+        cb(null, true);
+      })
+      .catch(err => cb(err));
+    },
+    mGetAndSetObjects: (cb) => {
+      const pairs = {
+        foo: { boo: 'bar' },
+        bizz: { bam: 'buzz' },
+      };
+      cache.mSetObjects(pairs)
+      .then(() => cache.mGetObjects(['bizz', 'foo']))
+      .then((values) => {
+        should(values.bizz).deepEqual({ bam: 'buzz' });
+        should(values.foo).deepEqual({ boo: 'bar' });
         cb(null, true);
       })
       .catch(err => cb(err));
