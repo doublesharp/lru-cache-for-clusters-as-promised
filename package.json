@@ -1,10 +1,10 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha ./test",
+    "test": "./node_modules/.bin/mocha ./test -s 0",
     "coverage-report": "./node_modules/.bin/istanbul-coverage-report",
     "coverage": "npm run coverage-report && open ./coverage/lcov-report/index.html",
     "coverage-badge": "./node_modules/.bin/istanbul-cobertura-badger -e 95 -g 85 -b \"${PWD##*/}\"",
@@ -31,10 +31,10 @@
     "cron": "^1.1.1",
     "debug": "^2.3.2",
     "lru-cache": "^4.0.1",
-    "uuid": "^2.0.3"
+    "uuid": "^3.0.0"
   },
   "devDependencies": {
-    "developer-tools": "0.0.4",
+    "developer-tools": "0.0.6",
     "eslint-config-airbnb": "^13.0.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx-a11y": "^2.2.3",
