@@ -1,6 +1,6 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
@@ -13,7 +13,8 @@
     "depcheck": "./node_modules/.bin/dependency-checker",
     "sloc": "./node_modules/.bin/sloc *.js test",
     "sloc-app": "./node_modules/.bin/sloc *.js",
-    "sloc-test": "./node_modules/.bin/sloc test"
+    "sloc-test": "./node_modules/.bin/sloc test",
+    "inspect": "NODE_ENV=test ./node_modules/.bin/mocha -s 0 --inspect --debug-brk"
   },
   "repository": {
     "type": "git",
@@ -32,19 +33,19 @@
   "license": "MIT",
   "dependencies": {
     "cron": "^1.1.1",
-    "debug": "^2.3.3",
+    "debug": "^2.4.3",
     "lru-cache": "^4.0.2",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
-    "developer-tools": "0.0.7",
+    "developer-tools": "0.0.10",
     "eslint-config-airbnb": "^13.0.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx-a11y": "^2.2.3",
     "eslint-plugin-mocha": "^4.7.0",
     "eslint-plugin-react": "^6.8.0",
     "express": "^4.14.0",
-    "should": "^11.1.1",
+    "should": "^11.1.2",
     "supertest": "^2.0.1"
   },
   "pre-commit": [
