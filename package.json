@@ -1,6 +1,6 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
@@ -33,12 +33,12 @@
   "license": "MIT",
   "dependencies": {
     "cron": "^1.1.1",
-    "debug": "^2.4.3",
+    "debug": "^2.4.4",
     "lru-cache": "^4.0.2",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
-    "developer-tools": "0.0.10",
+    "developer-tools": "0.0.14",
     "eslint-config-airbnb": "^13.0.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx-a11y": "^2.2.3",

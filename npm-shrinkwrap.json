@@ -423,9 +423,9 @@
       "dev": true
     },
     "debug": {
-      "version": "2.4.3",
-      "from": "debug@latest",
-      "resolved": "https://registry.npmjs.org/debug/-/debug-2.4.3.tgz"
+      "version": "2.4.4",
+      "from": "debug@2.4.4",
+      "resolved": "https://registry.npmjs.org/debug/-/debug-2.4.4.tgz"
     },
     "decamelize": {
       "version": "1.2.0",
@@ -488,9 +488,9 @@
       "dev": true
     },
     "developer-tools": {
-      "version": "0.0.9",
-      "from": "developer-tools@latest",
-      "resolved": "https://registry.npmjs.org/developer-tools/-/developer-tools-0.0.9.tgz",
+      "version": "0.0.14",
+      "from": "developer-tools@0.0.14",
+      "resolved": "https://registry.npmjs.org/developer-tools/-/developer-tools-0.0.14.tgz",
       "dev": true
     },
     "diff": {
@@ -624,9 +624,9 @@
       "dev": true
     },
     "eslint": {
-      "version": "3.12.1",
-      "from": "eslint@>=3.12.1 <4.0.0",
-      "resolved": "https://registry.npmjs.org/eslint/-/eslint-3.12.1.tgz",
+      "version": "3.12.2",
+      "from": "eslint@3.12.2",
+      "resolved": "https://registry.npmjs.org/eslint/-/eslint-3.12.2.tgz",
       "dev": true,
       "dependencies": {
         "strip-bom": {
