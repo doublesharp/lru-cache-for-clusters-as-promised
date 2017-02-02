@@ -1,3 +1,24 @@
+1.5.7 / 2017-02-02
+==================
+
+  * Use `yarn` for installs
+  * Update dependencies and dev dependencies
+
+1.5.6 / 2016-12-14
+==================
+
+  * Update dependencies
+
+1.5.5 / 2016-12-14
+==================
+
+  * Update dependencies
+
+1.5.4 / 2016-12-05
+==================
+
+  * Update dependencies
+
 1.5.3 / 2016-11-19
 ==================
 
