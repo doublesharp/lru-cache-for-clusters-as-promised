@@ -27,6 +27,13 @@ const callbacks = {};
 // use to identify messages from our module
 const source = 'lru-cache-for-clusters-as-promised';
 
+/**
+ * Starts a cron job to prune stale objects from the cache
+ * @param  {LRUCache} cache     The cache we want to prune
+ * @param  {string} cronTime  The cron schedule
+ * @param  {string} namespace The namespace for shared caches
+ * @return {CronJob}           The cron job which has already been started
+ */
 function startPruneCronJob(cache, cronTime, namespace) {
   debug('Creating cache prune job.', cache);
   const job = new CronJob({
@@ -51,7 +58,10 @@ if (cluster.isMaster) {
       if (request.source !== source) return;
       messages(`Master recieved message from worker ${worker.id}`, request);
 
-      // send a response back to the worker thread
+      /**
+       * Sends the response back to the worker thread
+       * @param  {Object} data The response from the cache
+       */
       function sendResponse(data) {
         const response = data;
         response.source = source;
@@ -129,21 +139,21 @@ if (cluster.isMaster) {
         case 'mGet': {
           const mGetValues = {};
           if (params[0] && params[0] instanceof Array) {
-            params[0].map(key => (mGetValues[key] = lru.get(key)));
+            params[0].map((key) => (mGetValues[key] = lru.get(key)));
           }
           sendResponse({ value: mGetValues });
           break;
         }
         case 'mSet': {
           if (params[0] && params[0] instanceof Object) {
-            Object.keys(params[0]).map(key => lru.set(key, params[0][key], params[1]));
+            Object.keys(params[0]).map((key) => lru.set(key, params[0][key], params[1]));
           }
           sendResponse({ value: true });
           break;
         }
         case 'mDel': {
           if (params[0] && params[0] instanceof Array) {
-            params[0].map(key => lru.del(key));
+            params[0].map((key) => lru.del(key));
           }
           sendResponse({ value: true });
           break;
@@ -187,7 +197,8 @@ if (cluster.isWorker) {
  * that resolves the Promise. For non-clustered environments a Promisfied interface
  * to the cache is provided to match the interface for clustered environments.
  *
- * @param Object options The lru-cache options. Properties can be set, functions cannot.
+ * @param {Object} opts The lru-cache options. Properties can be set, functions cannot.
+ * @return {Object} Object with LRU methods
  */
 function LRUCacheForClustersAsPromised(opts) {
   // default to some empty options
@@ -256,19 +267,19 @@ function LRUCacheForClustersAsPromised(opts) {
         case 'mGet': {
           const mGetValues = {};
           if (funcArgs[0] && funcArgs[0] instanceof Array) {
-            funcArgs[0].map(key => (mGetValues[key] = lru.get(key)));
+            funcArgs[0].map((key) => (mGetValues[key] = lru.get(key)));
           }
           return Promise.resolve(mGetValues);
         }
         case 'mSet': {
           if (funcArgs[0] && funcArgs[0] instanceof Object) {
-            Object.keys(funcArgs[0]).map(key => lru.set(key, funcArgs[0][key], funcArgs[1]));
+            Object.keys(funcArgs[0]).map((key) => lru.set(key, funcArgs[0][key], funcArgs[1]));
           }
           return Promise.resolve(true);
         }
         case 'mDel': {
           if (funcArgs[0] && funcArgs[0] instanceof Array) {
-            funcArgs[0].map(key => lru.del(key));
+            funcArgs[0].map((key) => lru.del(key));
           }
           return Promise.resolve(true);
         }
@@ -316,7 +327,7 @@ function LRUCacheForClustersAsPromised(opts) {
   if (cluster.isWorker) {
     // create a new LRU cache on the master
     promiseTo('()', options)
-    .then(lruOptions => debug('created lru cache on master', lruOptions))
+    .then((lruOptions) => debug('created lru cache on master', lruOptions))
     .catch((err) => {
       /* istanbul ignore next */
       debug('failed to create lru cache on master', err, options);
@@ -328,27 +339,27 @@ function LRUCacheForClustersAsPromised(opts) {
   // return a Promise.
   return {
     set: (key, value, maxAge) => promiseTo('set', key, value, maxAge),
-    get: key => promiseTo('get', key),
+    get: (key) => promiseTo('get', key),
     setObject: (key, value, maxAge) => promiseTo('set', key, JSON.stringify(value), maxAge),
-    getObject: key => promiseTo('get', key).then(value => Promise.resolve(value ? JSON.parse(value) : undefined)),
-    del: key => promiseTo('del', key),
-    mGet: keys => promiseTo('mGet', keys),
+    getObject: (key) => promiseTo('get', key).then((value) => Promise.resolve(value ? JSON.parse(value) : undefined)),
+    del: (key) => promiseTo('del', key),
+    mGet: (keys) => promiseTo('mGet', keys),
     mSet: (pairs, maxAge) => promiseTo('mSet', pairs, maxAge),
-    mGetObjects: keys => promiseTo('mGet', keys).then((pairs) => {
+    mGetObjects: (keys) => promiseTo('mGet', keys).then((pairs) => {
       const objs = {};
       return Promise.all(
-        Object.keys(pairs).map(key => Promise.resolve((objs[key] = JSON.parse(pairs[key]))))
+        Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON.parse(pairs[key]))))
       ).then(() => Promise.resolve(objs));
     }),
     mSetObjects: (pairs, maxAge) => {
       const objs = {};
       return Promise.all(
-        Object.keys(pairs).map(key => Promise.resolve((objs[key] = JSON.stringify(pairs[key]))))
+        Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON.stringify(pairs[key]))))
       ).then(() => promiseTo('mSet', objs, maxAge));
     },
-    mDel: keys => promiseTo('mDel', keys),
-    peek: key => promiseTo('peek', key),
-    has: key => promiseTo('has', key),
+    mDel: (keys) => promiseTo('mDel', keys),
+    peek: (key) => promiseTo('peek', key),
+    has: (key) => promiseTo('has', key),
     incr: (key, amount) => promiseTo('incr', key, amount),
     decr: (key, amount) => promiseTo('decr', key, amount),
     reset: () => promiseTo('reset'),
@@ -358,9 +369,9 @@ function LRUCacheForClustersAsPromised(opts) {
     prune: () => promiseTo('prune'),
     length: () => promiseTo('length'),
     itemCount: () => promiseTo('itemCount'),
-    stale: stale => promiseTo('stale', stale),
-    max: max => promiseTo('max', max),
-    maxAge: maxAge => promiseTo('maxAge', maxAge),
+    stale: (stale) => promiseTo('stale', stale),
+    max: (max) => promiseTo('max', max),
+    maxAge: (maxAge) => promiseTo('maxAge', maxAge),
   };
 }
 

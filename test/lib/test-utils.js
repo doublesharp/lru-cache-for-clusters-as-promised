@@ -5,6 +5,11 @@ const LRUCache = require('../../');
 
 const member = cluster.isWorker ? 'worker' : 'master';
 
+/**
+ * Test class definitions for clusterd and non-clustered environments
+ * @param {LRUCacheForClustersAsPromised} cache The cache that the test should be run against.
+ * @return {void} Node style callback
+ */
 function TestUtils(cache) {
   return {
     clusterTests: {
@@ -59,7 +64,7 @@ function TestUtils(cache) {
         should(value).equal('buzz');
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     mSetNull: (cb) => {
       const pairs = null;
@@ -69,7 +74,7 @@ function TestUtils(cache) {
       .then(() => {
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     mGet: (cb) => {
       const pairs = {
@@ -84,7 +89,7 @@ function TestUtils(cache) {
         should(values.foo).equal('bar');
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     mGetAndSetObjects: (cb) => {
       const pairs = {
@@ -98,7 +103,7 @@ function TestUtils(cache) {
         should(values.foo).deepEqual({ boo: 'bar' });
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     mGetNull: (cb) => {
       cache.mGet('string')
@@ -110,7 +115,7 @@ function TestUtils(cache) {
         should(values).deepEqual({});
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     mDel: (cb) => {
       const pairs = {
@@ -124,7 +129,7 @@ function TestUtils(cache) {
         should(value).equal(undefined);
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     mDelNull: (cb) => {
       const pairs = {
@@ -138,7 +143,7 @@ function TestUtils(cache) {
         should(value).equal('blamo');
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     objects: (cb) => {
       const myObj = { foo: 'bar' };
@@ -149,7 +154,7 @@ function TestUtils(cache) {
         should(obj.foo).equal('bar');
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     null_objects: (cb) => {
       cache.setObject(1, undefined)
@@ -158,7 +163,7 @@ function TestUtils(cache) {
         should(obj).equal(undefined);
         cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     hi: (cb) => {
       let responded = false;
@@ -169,7 +174,7 @@ function TestUtils(cache) {
           cb(null, true);
         }
       };
-      process.on('message', response => callback && callback(response));
+      process.on('message', (response) => callback && callback(response));
       process.send('hi');
     },
     timeout: (cb) => {
@@ -184,8 +189,8 @@ function TestUtils(cache) {
         large += large;
       }
       return cacheBad.get(`bad-cache-key-${large}`)
-      .then(result => cb(null, result))
-      .catch(err => cb(err));
+      .then((result) => cb(null, result))
+      .catch((err) => cb(err));
     },
     reject: (cb) => {
       const cacheBad = new LRUCache({
@@ -231,12 +236,12 @@ function TestUtils(cache) {
           });
         }, 1100);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     set: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(result => cb(null, result))
-      .catch(err => cb(err));
+      .then((result) => cb(null, result))
+      .catch((err) => cb(err));
     },
     get: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -245,7 +250,7 @@ function TestUtils(cache) {
         should(result).equal(config.args.one);
         return cb(null, result);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     del: (cb) => {
       cache.del(config.args.one)
@@ -254,7 +259,7 @@ function TestUtils(cache) {
         should(result).equal(undefined);
         return cb(null, result);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     incr: (cb) => {
       cache.incr(config.args.one)
@@ -266,7 +271,7 @@ function TestUtils(cache) {
         should(value).eql(2);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     incr2: (cb) => {
       const amount = 2;
@@ -279,7 +284,7 @@ function TestUtils(cache) {
         should(value).eql(4);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     decr: (cb) => {
       cache.decr(config.args.one)
@@ -291,7 +296,7 @@ function TestUtils(cache) {
         should(value).eql(-2);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     decr2: (cb) => {
       const amount = 2;
@@ -304,7 +309,7 @@ function TestUtils(cache) {
         should(value).eql(-4);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     peek: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -320,7 +325,7 @@ function TestUtils(cache) {
         should(undefined).equal(result);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     has: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -329,7 +334,7 @@ function TestUtils(cache) {
         should(has).equal(true);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     length: (cb) => {
       cache.set(config.args.two, config.args.two)
@@ -339,7 +344,7 @@ function TestUtils(cache) {
         should(length).equal(2);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     itemCount: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -348,7 +353,7 @@ function TestUtils(cache) {
         should(itemCount).equal(1);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     reset: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -358,7 +363,7 @@ function TestUtils(cache) {
         should(result).equal(undefined);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     keys: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -371,7 +376,7 @@ function TestUtils(cache) {
         should(keys[0]).equal(config.args.one);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     values: (cb) => {
       cache.set(config.args.two, config.args.two)
@@ -380,7 +385,7 @@ function TestUtils(cache) {
         should(values).deepEqual([config.args.two]);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     prune: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -390,7 +395,7 @@ function TestUtils(cache) {
         should(itemCount).equal(1);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     dump: (cb) => {
       cache.set(config.args.one, config.args.two)
@@ -400,7 +405,7 @@ function TestUtils(cache) {
         should(dump[0].v).equal(config.args.two);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     getMax: (cb) => {
       cache.max()
@@ -408,7 +413,7 @@ function TestUtils(cache) {
         should(max).equal(3);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     getMaxAge: (cb) => {
       cache.maxAge()
@@ -416,7 +421,7 @@ function TestUtils(cache) {
         should(maxAge).equal(0);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     getStale: (cb) => {
       cache.stale()
@@ -424,7 +429,7 @@ function TestUtils(cache) {
         should(stale).equal(undefined);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     setMax: (cb) => {
       cache.max(100)
@@ -432,7 +437,7 @@ function TestUtils(cache) {
         should(max).equal(100);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     setMaxAge: (cb) => {
       cache.maxAge(10)
@@ -440,7 +445,7 @@ function TestUtils(cache) {
         should(maxAge).equal(10);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     setStale: (cb) => {
       cache.stale(true)
@@ -448,7 +453,7 @@ function TestUtils(cache) {
         should(stale).equal(true);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     addFour: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -463,7 +468,7 @@ function TestUtils(cache) {
         should(result).equal(undefined);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
     addFourAccessOne: (cb) => {
       cache.set(config.args.one, config.args.one)
@@ -491,7 +496,7 @@ function TestUtils(cache) {
         should(result).equal(config.args.one);
         return cb(null, true);
       })
-      .catch(err => cb(err));
+      .catch((err) => cb(err));
     },
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
@@ -14,8 +14,7 @@
     "sloc": "./node_modules/.bin/sloc *.js test",
     "sloc-app": "./node_modules/.bin/sloc *.js",
     "sloc-test": "./node_modules/.bin/sloc test",
-    "inspect": "NODE_ENV=test ./node_modules/.bin/mocha -s 0 --inspect --debug-brk",
-    "freeze": "rm npm-shrinkwrap.json &2> /dev/null && yarn install && npm shrinkwrap"
+    "inspect": "NODE_ENV=test ./node_modules/.bin/mocha -s 0 --inspect --debug-brk"
   },
   "repository": {
     "type": "git",
@@ -34,19 +33,16 @@
   "license": "MIT",
   "dependencies": {
     "cron": "^1.2.1",
-    "debug": "^2.6.0",
+    "debug": "^2.6.1",
     "lru-cache": "^4.0.2",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
     "depcheck": "^0.6.7",
-    "eslint": "^3.14.1",
-    "eslint-config-airbnb": "^14.0.0",
-    "eslint-plugin-import": "^2.2.0",
-    "eslint-plugin-jsx-a11y": "^3.0.2",
+    "eslint": "^3.16.1",
+    "eslint-config-google": "^0.7.1",
     "eslint-plugin-mocha": "^4.8.0",
-    "eslint-plugin-react": "^6.9.0",
-    "express": "^4.14.1",
+    "express": "^4.15.0",
     "istanbul": "^0.4.5",
     "istanbul-cobertura-badger": "^1.2.1",
     "mocha": "^3.2.0",
