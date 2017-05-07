@@ -1,3 +1,9 @@
+1.5.9 / 2017-05-06
+==================
+
+  * Remove `npm-shrinkwrap.json`
+  * Update depedencies
+
 1.5.8 / 2017-03-03
 ==================
 
