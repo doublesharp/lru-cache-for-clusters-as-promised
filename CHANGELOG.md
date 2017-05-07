@@ -1,3 +1,8 @@
+1.5.10 / 2017-05-07
+==================
+
+  * Deduplicate common methods - fixes CodeClimate rating to 4.0
+
 1.5.9 / 2017-05-06
 ==================
 
