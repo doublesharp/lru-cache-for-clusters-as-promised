@@ -49,6 +49,25 @@ function startPruneCronJob(cache, cronTime, namespace) {
   return job;
 }
 
+const funcs = {
+  mapObjects: (pairs, objs, jsonFunction) =>
+    Promise.all(
+      Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON[jsonFunction](pairs[key]))))
+    ),
+  mGet: (lru, params) => {
+    const mGetValues = {};
+    if (params[0] && params[0] instanceof Array) {
+      params[0].map((key) => (mGetValues[key] = lru.get(key)));
+    }
+    return mGetValues;
+  },
+  mSet: (lru, params) => {
+    if (params[0] && params[0] instanceof Object) {
+      Object.keys(params[0]).map((key) => lru.set(key, params[0][key], params[1]));
+    }
+  },
+};
+
 // only run on the master thread
 if (cluster.isMaster) {
   // for each worker created...
@@ -137,17 +156,12 @@ if (cluster.isMaster) {
           break;
         }
         case 'mGet': {
-          const mGetValues = {};
-          if (params[0] && params[0] instanceof Array) {
-            params[0].map((key) => (mGetValues[key] = lru.get(key)));
-          }
+          const mGetValues = funcs.mGet(lru, params);
           sendResponse({ value: mGetValues });
           break;
         }
         case 'mSet': {
-          if (params[0] && params[0] instanceof Object) {
-            Object.keys(params[0]).map((key) => lru.set(key, params[0][key], params[1]));
-          }
+          funcs.mSet(lru, params);
           sendResponse({ value: true });
           break;
         }
@@ -265,16 +279,11 @@ function LRUCacheForClustersAsPromised(opts) {
           return Promise.resolve(value);
         }
         case 'mGet': {
-          const mGetValues = {};
-          if (funcArgs[0] && funcArgs[0] instanceof Array) {
-            funcArgs[0].map((key) => (mGetValues[key] = lru.get(key)));
-          }
+          const mGetValues = funcs.mGet(lru, funcArgs);
           return Promise.resolve(mGetValues);
         }
         case 'mSet': {
-          if (funcArgs[0] && funcArgs[0] instanceof Object) {
-            Object.keys(funcArgs[0]).map((key) => lru.set(key, funcArgs[0][key], funcArgs[1]));
-          }
+          funcs.mSet(lru, funcArgs);
           return Promise.resolve(true);
         }
         case 'mDel': {
@@ -347,15 +356,15 @@ function LRUCacheForClustersAsPromised(opts) {
     mSet: (pairs, maxAge) => promiseTo('mSet', pairs, maxAge),
     mGetObjects: (keys) => promiseTo('mGet', keys).then((pairs) => {
       const objs = {};
-      return Promise.all(
-        Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON.parse(pairs[key]))))
-      ).then(() => Promise.resolve(objs));
+      return funcs
+        .mapObjects(pairs, objs, 'parse')
+        .then(() => Promise.resolve(objs));
     }),
     mSetObjects: (pairs, maxAge) => {
       const objs = {};
-      return Promise.all(
-        Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON.stringify(pairs[key]))))
-      ).then(() => promiseTo('mSet', objs, maxAge));
+      return funcs
+        .mapObjects(pairs, objs, 'stringify')
+        .then(() => promiseTo('mSet', objs, maxAge));
     },
     mDel: (keys) => promiseTo('mDel', keys),
     peek: (key) => promiseTo('peek', key),
