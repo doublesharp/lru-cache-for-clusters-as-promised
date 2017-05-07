@@ -54,6 +54,11 @@ const funcs = {
     Promise.all(
       Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON[jsonFunction](pairs[key]))))
     ),
+  mDel: (lru, params) => {
+    if (params[0] && params[0] instanceof Array) {
+      params[0].map((key) => lru.del(key));
+    }
+  },
   mGet: (lru, params) => {
     const mGetValues = {};
     if (params[0] && params[0] instanceof Array) {
@@ -166,9 +171,7 @@ if (cluster.isMaster) {
           break;
         }
         case 'mDel': {
-          if (params[0] && params[0] instanceof Array) {
-            params[0].map((key) => lru.del(key));
-          }
+          funcs.mDel(lru, params);
           sendResponse({ value: true });
           break;
         }
@@ -287,9 +290,7 @@ function LRUCacheForClustersAsPromised(opts) {
           return Promise.resolve(true);
         }
         case 'mDel': {
-          if (funcArgs[0] && funcArgs[0] instanceof Array) {
-            funcArgs[0].map((key) => lru.del(key));
-          }
+          funcs.mDel(lru, funcArgs);
           return Promise.resolve(true);
         }
         case 'itemCount':
