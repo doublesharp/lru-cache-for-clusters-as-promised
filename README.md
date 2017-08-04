@@ -21,6 +21,10 @@ When creating a new instance and `cluster.isMaster === true` the shared cache is
 npm install --save lru-cache-for-clusters-as-promised
 ```
 
+```shell
+yarn add lru-cache-for-clusters-as-promised
+```
+
 # options
 
 * `namespace: string`, default `"default"`;
@@ -88,6 +92,7 @@ npm install --save lru-cache-for-clusters-as-promised
   * Get or update the `stale` value for the cache.
 
 # example usage
+**Master**
 ```javascript
 // require the module in your master thread that creates workers to initialize
 const LRUCache = require('lru-cache-for-clusters-as-promised');
@@ -95,6 +100,7 @@ const LRUCache = require('lru-cache-for-clusters-as-promised');
 LRUCache.init();
 ```
 
+**Worker**
 ```javascript
 // worker code
 const LRUCache = require('lru-cache-for-clusters-as-promised');
