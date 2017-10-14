@@ -1,10 +1,10 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.5.14",
+  "version": "1.5.15",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha ./test -s 0",
+    "test": "./node_modules/.bin/mocha ./test -s 0 --exit",
     "coverage-report": "./test/bin/istanbul-coverage-report",
     "coverage": "npm run coverage-report && open ./coverage/lcov-report/index.html",
     "coverage-badge": "./node_modules/.bin/istanbul-cobertura-badger -e 95 -g 85 -b \"${PWD##*/}\"",
@@ -32,24 +32,24 @@
   "author": "Justin Silver",
   "license": "MIT",
   "dependencies": {
-    "cron": "^1.2.1",
-    "debug": "^3.0.1",
-    "lru-cache": "^4.1.1",
-    "uuid": "^3.1.0"
+    "cron": "1.3.0",
+    "debug": "3.1.0",
+    "lru-cache": "4.1.1",
+    "uuid": "3.1.0"
   },
   "devDependencies": {
-    "depcheck": "^0.6.7",
-    "eslint": "^4.6.1",
-    "eslint-config-google": "^0.9.1",
-    "eslint-plugin-mocha": "^4.11.0",
-    "express": "^4.15.4",
-    "istanbul": "^0.4.5",
+    "depcheck": "0.6.8",
+    "eslint": "4.9.0",
+    "eslint-config-google": "0.9.1",
+    "eslint-plugin-mocha": "4.11.0",
+    "express": "4.16.2",
+    "istanbul": "0.4.5",
     "istanbul-cobertura-badger": "https://github.com/doublesharp/istanbul-cobertura-badger.git",
-    "mocha": "^3.5.2",
-    "should": "^13.0.1",
-    "sloc": "^0.2.0",
-    "spec-xunit-file": "^0.0.1-3",
-    "supertest": "^3.0.0"
+    "mocha": "4.0.1",
+    "should": "13.1.2",
+    "sloc": "0.2.0",
+    "spec-xunit-file": "0.0.1-3",
+    "supertest": "3.0.0"
   },
   "pre-commit": [
     "lint",
