@@ -14,13 +14,13 @@ describe('LRU Cache for Clusters', () => {
 
   afterEach((done) => {
     request(`http://${config.server.host}:${config.server.port}`)
-    .get('/reset')
-    .end((err) => {
-      if (err) {
-        return done(err);
-      }
-      return done();
-    });
+        .get('/reset')
+        .end((err) => {
+          if (err) {
+            return done(err);
+          }
+          return done();
+        });
   });
 
   ['tests', 'clusterTests'].forEach((test) => {
@@ -28,14 +28,14 @@ describe('LRU Cache for Clusters', () => {
       it(`should ${testUtils[test][method]}`, (done) => {
         // run the request
         request(`http://${config.server.host}:${config.server.port}`)
-        .get(`/${method}`)
-        .expect(200)
-        .end((err, response) => {
-          if (err) {
-            return done(err);
-          }
-          return response.body === true ? done() : done(new Error(response.body));
-        });
+            .get(`/${method}`)
+            .expect(200)
+            .end((err, response) => {
+              if (err) {
+                return done(err);
+              }
+              return response.body === true ? done() : done(new Error(response.body));
+            });
       });
     });
   });

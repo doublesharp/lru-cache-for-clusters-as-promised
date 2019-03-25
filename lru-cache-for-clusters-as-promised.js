@@ -52,7 +52,7 @@ function startPruneCronJob(cache, cronTime, namespace) {
 const funcs = {
   mapObjects: (pairs, objs, jsonFunction) =>
     Promise.all(
-      Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON[jsonFunction](pairs[key]))))
+        Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON[jsonFunction](pairs[key]))))
     ),
   mDel: (lru, params) => {
     if (params[0] && params[0] instanceof Array) {
@@ -337,11 +337,11 @@ function LRUCacheForClustersAsPromised(opts) {
   if (cluster.isWorker) {
     // create a new LRU cache on the master
     promiseTo('()', options)
-    .then((lruOptions) => debug('created lru cache on master', lruOptions))
-    .catch((err) => {
-      /* istanbul ignore next */
-      debug('failed to create lru cache on master', err, options);
-    });
+        .then((lruOptions) => debug('created lru cache on master', lruOptions))
+        .catch((err) => {
+          /* istanbul ignore next */
+          debug('failed to create lru cache on master', err, options);
+        });
   }
 
   // the lru-cache functions we are able to provide. Note that length()
@@ -358,14 +358,14 @@ function LRUCacheForClustersAsPromised(opts) {
     mGetObjects: (keys) => promiseTo('mGet', keys).then((pairs) => {
       const objs = {};
       return funcs
-        .mapObjects(pairs, objs, 'parse')
-        .then(() => Promise.resolve(objs));
+          .mapObjects(pairs, objs, 'parse')
+          .then(() => Promise.resolve(objs));
     }),
     mSetObjects: (pairs, maxAge) => {
       const objs = {};
       return funcs
-        .mapObjects(pairs, objs, 'stringify')
-        .then(() => promiseTo('mSet', objs, maxAge));
+          .mapObjects(pairs, objs, 'stringify')
+          .then(() => promiseTo('mSet', objs, maxAge));
     },
     mDel: (keys) => promiseTo('mDel', keys),
     peek: (key) => promiseTo('peek', key),

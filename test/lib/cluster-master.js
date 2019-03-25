@@ -25,7 +25,7 @@ if (process.env.running_under_istanbul) {
       '--',
     ]
     // append any additional command line arguments
-    .concat(process.argv.slice(2)),
+        .concat(process.argv.slice(2)),
   });
 } else {
   // normal forking
@@ -71,7 +71,7 @@ module.exports = (done) => {
         namespace: 'test-cache',
       });
       cache.keys()
-      .then(() => done2());
+          .then(() => done2());
     },
     getCacheMax: () => {
       const cache = new LRUCache({

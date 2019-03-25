@@ -59,22 +59,22 @@ function TestUtils(cache) {
         bizz: 'buzz',
       };
       cache.mSet(pairs)
-      .then(() => cache.get('bizz'))
-      .then((value) => {
-        should(value).equal('buzz');
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.get('bizz'))
+          .then((value) => {
+            should(value).equal('buzz');
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     mSetNull: (cb) => {
       const pairs = null;
       cache.mSet(pairs)
-      .then(() => cache.mSet('string'))
-      .then(() => cache.mSet(['array']))
-      .then(() => {
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.mSet('string'))
+          .then(() => cache.mSet(['array']))
+          .then(() => {
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     mGet: (cb) => {
       const pairs = {
@@ -82,14 +82,14 @@ function TestUtils(cache) {
         bizz: 'buzz',
       };
       cache.mSet(pairs)
-      .then(() => cache.mGet(['bizz', 'foo']))
-      .then((values) => {
-       // should(values).not.equal(undefined);
-        should(values.bizz).equal('buzz');
-        should(values.foo).equal('bar');
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.mGet(['bizz', 'foo']))
+          .then((values) => {
+            // should(values).not.equal(undefined);
+            should(values.bizz).equal('buzz');
+            should(values.foo).equal('bar');
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     mGetAndSetObjects: (cb) => {
       const pairs = {
@@ -97,25 +97,25 @@ function TestUtils(cache) {
         bizz: { bam: 'buzz' },
       };
       cache.mSetObjects(pairs)
-      .then(() => cache.mGetObjects(['bizz', 'foo']))
-      .then((values) => {
-        should(values.bizz).deepEqual({ bam: 'buzz' });
-        should(values.foo).deepEqual({ boo: 'bar' });
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.mGetObjects(['bizz', 'foo']))
+          .then((values) => {
+            should(values.bizz).deepEqual({ bam: 'buzz' });
+            should(values.foo).deepEqual({ boo: 'bar' });
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     mGetNull: (cb) => {
       cache.mGet('string')
-      .then((values) => {
-        should(values).deepEqual({});
-        return cache.mGet(null);
-      })
-      .then((values) => {
-        should(values).deepEqual({});
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((values) => {
+            should(values).deepEqual({});
+            return cache.mGet(null);
+          })
+          .then((values) => {
+            should(values).deepEqual({});
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     mDel: (cb) => {
       const pairs = {
@@ -123,13 +123,13 @@ function TestUtils(cache) {
         get: 'buzz',
       };
       cache.mSet(pairs)
-      .then(() => cache.mDel(['my', 'get']))
-      .then(() => cache.get('get'))
-      .then((value) => {
-        should(value).equal(undefined);
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.mDel(['my', 'get']))
+          .then(() => cache.get('get'))
+          .then((value) => {
+            should(value).equal(undefined);
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     mDelNull: (cb) => {
       const pairs = {
@@ -137,33 +137,33 @@ function TestUtils(cache) {
         bizz: 'blamo',
       };
       cache.mSet(pairs)
-      .then(() => cache.mDel(null))
-      .then(() => cache.get('bizz'))
-      .then((value) => {
-        should(value).equal('blamo');
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.mDel(null))
+          .then(() => cache.get('bizz'))
+          .then((value) => {
+            should(value).equal('blamo');
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     objects: (cb) => {
       const myObj = { foo: 'bar' };
       cache.setObject(1, myObj)
-      .then(() => cache.getObject(1))
-      .then((obj) => {
-        should(obj).not.equal(null);
-        should(obj.foo).equal('bar');
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.getObject(1))
+          .then((obj) => {
+            should(obj).not.equal(null);
+            should(obj.foo).equal('bar');
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     null_objects: (cb) => {
       cache.setObject(1, undefined)
-      .then(() => cache.getObject(1))
-      .then((obj) => {
-        should(obj).equal(undefined);
-        cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.getObject(1))
+          .then((obj) => {
+            should(obj).equal(undefined);
+            cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     hi: (cb) => {
       let responded = false;
@@ -189,8 +189,8 @@ function TestUtils(cache) {
         large += large;
       }
       return cacheBad.get(`bad-cache-key-${large}`)
-      .then((result) => cb(null, result))
-      .catch((err) => cb(err));
+          .then((result) => cb(null, result))
+          .catch((err) => cb(err));
     },
     reject: (cb) => {
       const cacheBad = new LRUCache({
@@ -205,8 +205,8 @@ function TestUtils(cache) {
         large += large;
       }
       return cacheBad.get(`bad-cache-key-${large}`)
-      .then(() => cb('fail'))
-      .catch(() => cb(null, true));
+          .then(() => cb('fail'))
+          .catch(() => cb(null, true));
     },
     pruneJob: (cb) => {
       const prunedCache = new LRUCache({
@@ -217,286 +217,286 @@ function TestUtils(cache) {
         prune: '*/1 * * * * *',
       });
       prunedCache.set(config.args.one, config.args.one)
-      .then(() => prunedCache.set(config.args.two, config.args.two, 2000))
-      .then(() => prunedCache.itemCount())
-      .then((itemCount) => {
-        // we should see 2 items in the cache
-        should(itemCount).equal(2);
-        // check again in 1100 ms
-        setTimeout(() => {
-          // one of the items should have been removed based on the expiration
-          prunedCache.itemCount()
-          .then((itemCount2) => {
-            try {
-              should(itemCount2).equal(1);
-              return cb(null, true);
-            } catch (err) {
-              return cb(err);
-            }
-          });
-        }, 1100);
-      })
-      .catch((err) => cb(err));
+          .then(() => prunedCache.set(config.args.two, config.args.two, 2000))
+          .then(() => prunedCache.itemCount())
+          .then((itemCount) => {
+            // we should see 2 items in the cache
+            should(itemCount).equal(2);
+            // check again in 1100 ms
+            setTimeout(() => {
+              // one of the items should have been removed based on the expiration
+              prunedCache.itemCount()
+                  .then((itemCount2) => {
+                    try {
+                      should(itemCount2).equal(1);
+                      return cb(null, true);
+                    } catch (err) {
+                      return cb(err);
+                    }
+                  });
+            }, 1100);
+          })
+          .catch((err) => cb(err));
     },
     set: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then((result) => cb(null, result))
-      .catch((err) => cb(err));
+          .then((result) => cb(null, result))
+          .catch((err) => cb(err));
     },
     get: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.get(config.args.one))
-      .then((result) => {
-        should(result).equal(config.args.one);
-        return cb(null, result);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.get(config.args.one))
+          .then((result) => {
+            should(result).equal(config.args.one);
+            return cb(null, result);
+          })
+          .catch((err) => cb(err));
     },
     del: (cb) => {
       cache.del(config.args.one)
-      .then(() => cache.get(config.args.one))
-      .then((result) => {
-        should(result).equal(undefined);
-        return cb(null, result);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.get(config.args.one))
+          .then((result) => {
+            should(result).equal(undefined);
+            return cb(null, result);
+          })
+          .catch((err) => cb(err));
     },
     incr: (cb) => {
       cache.incr(config.args.one)
-      .then((value) => {
-        should(value).eql(1);
-        return cache.incr(config.args.one);
-      })
-      .then((value) => {
-        should(value).eql(2);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((value) => {
+            should(value).eql(1);
+            return cache.incr(config.args.one);
+          })
+          .then((value) => {
+            should(value).eql(2);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     incr2: (cb) => {
       const amount = 2;
       cache.incr(config.args.one, amount)
-      .then((value) => {
-        should(value).eql(2);
-        return cache.incr(config.args.one, amount);
-      })
-      .then((value) => {
-        should(value).eql(4);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((value) => {
+            should(value).eql(2);
+            return cache.incr(config.args.one, amount);
+          })
+          .then((value) => {
+            should(value).eql(4);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     decr: (cb) => {
       cache.decr(config.args.one)
-      .then((value) => {
-        should(value).eql(-1);
-        return cache.decr(config.args.one);
-      })
-      .then((value) => {
-        should(value).eql(-2);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((value) => {
+            should(value).eql(-1);
+            return cache.decr(config.args.one);
+          })
+          .then((value) => {
+            should(value).eql(-2);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     decr2: (cb) => {
       const amount = 2;
       cache.decr(config.args.one, amount)
-      .then((value) => {
-        should(value).eql(-2);
-        return cache.decr(config.args.one, amount);
-      })
-      .then((value) => {
-        should(value).eql(-4);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((value) => {
+            should(value).eql(-2);
+            return cache.decr(config.args.one, amount);
+          })
+          .then((value) => {
+            should(value).eql(-4);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     peek: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.set(config.args.two, config.args.two))
-      .then(() => cache.set(config.args.three, config.args.three))
-      .then(() => cache.peek(config.args.one))
-      .then((result) => {
-        should(result).equal(config.args.one);
-        return cache.set(config.args.four, config.args.four);
-      })
-      .then(() => cache.get(config.args.one))
-      .then((result) => {
-        should(undefined).equal(result);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.set(config.args.two, config.args.two))
+          .then(() => cache.set(config.args.three, config.args.three))
+          .then(() => cache.peek(config.args.one))
+          .then((result) => {
+            should(result).equal(config.args.one);
+            return cache.set(config.args.four, config.args.four);
+          })
+          .then(() => cache.get(config.args.one))
+          .then((result) => {
+            should(undefined).equal(result);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     has: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.has(config.args.one))
-      .then((has) => {
-        should(has).equal(true);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.has(config.args.one))
+          .then((has) => {
+            should(has).equal(true);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     length: (cb) => {
       cache.set(config.args.two, config.args.two)
-      .then(() => cache.set(config.args.three, config.args.three))
-      .then(() => cache.length())
-      .then((length) => {
-        should(length).equal(2);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.set(config.args.three, config.args.three))
+          .then(() => cache.length())
+          .then((length) => {
+            should(length).equal(2);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     itemCount: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.itemCount())
-      .then((itemCount) => {
-        should(itemCount).equal(1);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.itemCount())
+          .then((itemCount) => {
+            should(itemCount).equal(1);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     reset: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.reset())
-      .then(() => cache.get(config.args.one))
-      .then((result) => {
-        should(result).equal(undefined);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.reset())
+          .then(() => cache.get(config.args.one))
+          .then((result) => {
+            should(result).equal(undefined);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     keys: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then((result) => {
-        should(result).equal(true);
-        return cache.keys();
-      })
-      .then((keys) => {
-        should(keys.length).equal(1);
-        should(keys[0]).equal(config.args.one);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((result) => {
+            should(result).equal(true);
+            return cache.keys();
+          })
+          .then((keys) => {
+            should(keys.length).equal(1);
+            should(keys[0]).equal(config.args.one);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     values: (cb) => {
       cache.set(config.args.two, config.args.two)
-      .then(() => cache.values())
-      .then((values) => {
-        should(values).deepEqual([config.args.two]);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.values())
+          .then((values) => {
+            should(values).deepEqual([config.args.two]);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     prune: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then(() => cache.prune())
-      .then(() => cache.itemCount())
-      .then((itemCount) => {
-        should(itemCount).equal(1);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.prune())
+          .then(() => cache.itemCount())
+          .then((itemCount) => {
+            should(itemCount).equal(1);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     dump: (cb) => {
       cache.set(config.args.one, config.args.two)
-      .then(() => cache.dump())
-      .then((dump) => {
-        should(dump[0].k).equal(config.args.one);
-        should(dump[0].v).equal(config.args.two);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then(() => cache.dump())
+          .then((dump) => {
+            should(dump[0].k).equal(config.args.one);
+            should(dump[0].v).equal(config.args.two);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     getMax: (cb) => {
       cache.max()
-      .then((max) => {
-        should(max).equal(3);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((max) => {
+            should(max).equal(3);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     getMaxAge: (cb) => {
       cache.maxAge()
-      .then((maxAge) => {
-        should(maxAge).equal(0);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((maxAge) => {
+            should(maxAge).equal(0);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     getStale: (cb) => {
       cache.stale()
-      .then((stale) => {
-        should(stale).equal(undefined);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((stale) => {
+            should(stale).equal(undefined);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     setMax: (cb) => {
       cache.max(100)
-      .then((max) => {
-        should(max).equal(100);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((max) => {
+            should(max).equal(100);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     setMaxAge: (cb) => {
       cache.maxAge(10)
-      .then((maxAge) => {
-        should(maxAge).equal(10);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((maxAge) => {
+            should(maxAge).equal(10);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     setStale: (cb) => {
       cache.stale(true)
-      .then((stale) => {
-        should(stale).equal(true);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((stale) => {
+            should(stale).equal(true);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     addFour: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then((value) => {
-        should(value).equal(true);
-        return cache.set(config.args.two, config.args.two);
-      })
-      .then(() => cache.set(config.args.three, config.args.three))
-      .then(() => cache.set(config.args.four, config.args.four))
-      .then(() => cache.get(config.args.one))
-      .then((result) => {
-        should(result).equal(undefined);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((value) => {
+            should(value).equal(true);
+            return cache.set(config.args.two, config.args.two);
+          })
+          .then(() => cache.set(config.args.three, config.args.three))
+          .then(() => cache.set(config.args.four, config.args.four))
+          .then(() => cache.get(config.args.one))
+          .then((result) => {
+            should(result).equal(undefined);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
     addFourAccessOne: (cb) => {
       cache.set(config.args.one, config.args.one)
-      .then((value) => {
-        should(value).equal(true);
-        return cache.set(config.args.two, config.args.two);
-      })
-      .then((value) => {
-        should(value).equal(true);
-        return cache.set(config.args.three, config.args.three);
-      })
-      .then((value) => {
-        should(value).equal(true);
-        return cache.get(config.args.one);
-      })
-      .then((value) => {
-        should(value).equal(config.args.one);
-        return cache.set(config.args.four, config.args.four);
-      })
-      .then((value) => {
-        should(value).equal(true);
-        return cache.get(config.args.one);
-      })
-      .then((result) => {
-        should(result).equal(config.args.one);
-        return cb(null, true);
-      })
-      .catch((err) => cb(err));
+          .then((value) => {
+            should(value).equal(true);
+            return cache.set(config.args.two, config.args.two);
+          })
+          .then((value) => {
+            should(value).equal(true);
+            return cache.set(config.args.three, config.args.three);
+          })
+          .then((value) => {
+            should(value).equal(true);
+            return cache.get(config.args.one);
+          })
+          .then((value) => {
+            should(value).equal(config.args.one);
+            return cache.set(config.args.four, config.args.four);
+          })
+          .then((value) => {
+            should(value).equal(true);
+            return cache.get(config.args.one);
+          })
+          .then((result) => {
+            should(result).equal(config.args.one);
+            return cb(null, true);
+          })
+          .catch((err) => cb(err));
     },
   };
 }
