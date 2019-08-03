@@ -1,3 +1,21 @@
+1.5.19 / 2019-08-03
+==================
+
+  * Update dependencies
+  * Fix coverage badges with nyc
+
+1.5.18 / 2019-08-01
+==================
+
+  * Update dependencies
+  * Use nyc for coverage
+  
+1.5.17 / 2019-04-25
+==================
+
+  * Update dependencies
+  * Lint code
+
 1.5.16 / 2017-11-21
 ==================
 
