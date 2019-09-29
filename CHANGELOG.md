@@ -1,4 +1,17 @@
+1.5.20 / 2019-09-29
+==================
+
+  * Update dependencies
+
 1.5.19 / 2019-08-03
+==================
+
+  * Update dependencies
+  * Fix coverage badges with nyc
+
+1.5.18 / 2019-08-01
+==================
+
 ==================
 
   * Update dependencies
