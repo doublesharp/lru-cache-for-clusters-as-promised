@@ -1,3 +1,9 @@
+1.5.23 / 2020-06-10
+==================
+
+  * Typescript support (thanks @hanspeter1!)
+  * Update dependencies
+
 1.5.22 / 2020-05-01
 ==================
 
