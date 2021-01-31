@@ -90,6 +90,10 @@ yarn add lru-cache-for-clusters-as-promised
   * Get or update the `maxAge` value for the cache.
 * `stale([true|false])`
   * Get or update the `stale` value for the cache.
+* `execute(funcName, arg1, arg2, ...)`
+  * Execute arbitrary command (function) on the cache, returns whatever value was returned.
+* `getCache()`
+  * In Master, return the underlying LruCache instance (not as promise). In Worker, return null.
 
 # example usage
 **Master**

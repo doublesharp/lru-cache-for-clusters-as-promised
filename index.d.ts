@@ -82,6 +82,12 @@ declare module "lru-cache-for-clusters-as-promised" {
 
         // Get or update the stale value for the cache.
         stale(stale: boolean): Promise<void>
+
+        // Execute arbitrary command (function) on the cache.
+        execute(cmd: string, ...args: any[]): Promise<any>
+
+        // In Master, return the underlying LruCache instance. In Worker, return null.
+        getCache(): Object | null
     }
 
     // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#options

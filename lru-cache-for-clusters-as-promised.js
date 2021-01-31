@@ -185,9 +185,15 @@ if (cluster.isMaster) {
         }
         // return the function value
         default: {
-          sendResponse({
-            value: lru[request.func](...params),
-          });
+          try {
+            sendResponse({
+              value: lru[request.func](...params),
+            });
+          } catch (e) {
+            sendResponse({
+              error: e,
+            });
+          }
           break;
         }
       }
@@ -299,8 +305,12 @@ function LRUCacheForClustersAsPromised(opts) {
           return Promise.resolve(lru[func]);
         }
         default: {
-          // just call the function on the lru-cache
-          return Promise.resolve(lru[func](...funcArgs));
+          try {
+            // just call the function on the lru-cache
+            return Promise.resolve(lru[func](...funcArgs));
+          } catch (e) {
+            return Promise.reject(e);
+          }
         }
       }
     }
@@ -325,6 +335,9 @@ function LRUCacheForClustersAsPromised(opts) {
       callbacks[request.id] = (result) => {
         if (failsafeTimeout) {
           clearTimeout(failsafeTimeout);
+          if (result.hasOwnProperty('error')) {
+            return reject(result.error);
+          }
           return resolve(result.value);
         }
         return false;
@@ -382,6 +395,8 @@ function LRUCacheForClustersAsPromised(opts) {
     stale: (stale) => promiseTo('stale', stale),
     max: (max) => promiseTo('max', max),
     maxAge: (maxAge) => promiseTo('maxAge', maxAge),
+    execute: (...args) => promiseTo(...args),
+    getCache: () => cluster.isMaster ? lru : null,
   };
 }
 
