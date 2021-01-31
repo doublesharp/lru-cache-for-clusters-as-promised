@@ -109,11 +109,15 @@ if (cluster.isMaster) {
           if (caches[request.namespace]) {
             lru = caches[request.namespace];
             // update property values as needed
-            ['max', 'maxAge', 'stale'].forEach((prop) => {
+            ['max', 'maxAge'].forEach((prop) => {
               if (options[prop] && options[prop] !== lru[prop]) {
                 lru[prop] = options[prop];
               }
             });
+            // stale property is a bit different though.
+            if (options.stale && options.stale !== lru.allowStale) {
+              lru.allowStale = options.stale;
+            }
           } else {
             created = true;
             lru = caches[request.namespace] = new LRUCache(...params);
@@ -128,14 +132,14 @@ if (cluster.isMaster) {
               isnew: created,
               max: lru.max,
               maxAge: lru.maxAge,
-              stale: lru.stale,
+              stale: lru.allowStale,
             },
           });
           break;
         }
         case 'max':
         case 'maxAge':
-        case 'stale': {
+        case 'allowStale': {
           lru = caches[request.namespace];
           if (params[0]) {
             lru[request.func] = params[0];
@@ -263,7 +267,7 @@ function LRUCacheForClustersAsPromised(opts) {
       switch (func) {
         case 'max':
         case 'maxAge':
-        case 'stale': {
+        case 'allowStale': {
           if (funcArgs[0]) {
             lru[func] = funcArgs[0];
           }
@@ -379,7 +383,7 @@ function LRUCacheForClustersAsPromised(opts) {
     prune: () => promiseTo('prune'),
     length: () => promiseTo('length'),
     itemCount: () => promiseTo('itemCount'),
-    stale: (stale) => promiseTo('stale', stale),
+    allowStale: (stale) => promiseTo('allowStale', stale),
     max: (max) => promiseTo('max', max),
     maxAge: (maxAge) => promiseTo('maxAge', maxAge),
   };

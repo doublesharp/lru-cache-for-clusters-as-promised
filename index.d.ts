@@ -78,10 +78,10 @@ declare module "lru-cache-for-clusters-as-promised" {
         maxAge(maxAge: number): Promise<void>
 
         // Get or update the stale value for the cache.
-        stale(): Promise<boolean>
+        allowStale(): Promise<boolean>
 
         // Get or update the stale value for the cache.
-        stale(stale: boolean): Promise<void>
+        allowStale(stale: boolean): Promise<void>
     }
 
     // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#options
