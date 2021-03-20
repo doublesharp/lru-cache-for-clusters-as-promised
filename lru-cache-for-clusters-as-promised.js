@@ -14,6 +14,7 @@ const CronJob = require('cron').CronJob;
 const Debug = require('debug');
 const uuid = require('uuid');
 const LRUCache = require('lru-cache');
+const flatted = require('flatted');
 
 const debug = new Debug('lru-cache-for-clusters-as-promised');
 const messages = new Debug('lru-cache-for-clusters-as-promised-messages');
@@ -52,7 +53,9 @@ function startPruneCronJob(cache, cronTime, namespace) {
 const funcs = {
   mapObjects: (pairs, objs, jsonFunction) =>
     Promise.all(
-        Object.keys(pairs).map((key) => Promise.resolve((objs[key] = JSON[jsonFunction](pairs[key]))))
+      Object.keys(pairs).map((key) =>
+        Promise.resolve((objs[key] = flatted[jsonFunction](pairs[key])))
+      )
     ),
   mDel: (lru, params) => {
     if (params[0] && params[0] instanceof Array) {
@@ -68,32 +71,106 @@ const funcs = {
   },
   mSet: (lru, params) => {
     if (params[0] && params[0] instanceof Object) {
-      Object.keys(params[0]).map((key) => lru.set(key, params[0][key], params[1]));
+      Object.keys(params[0]).map((key) =>
+        lru.set(key, params[0][key], params[1])
+      );
     }
   },
 };
 
+/**
+ * Sends the response back to the worker thread
+ * @param  {Object} data The response from the cache
+ * @param  {Object} request The request
+ * @param  {Object} worker The worker sending the response
+ */
+function sendResponse(data, request, worker) {
+  const response = data;
+  response.source = source;
+  response.id = request.id;
+  response.func = request.func;
+  messages(`Master sending response to worker ${worker.id}`, response);
+  worker.send(response);
+}
+
 // only run on the master thread
 if (cluster.isMaster) {
+  const construct = function (request, params, worker) {
+    let created = false;
+    let lru = caches[request.namespace];
+    const options = params[0];
+    // create a new lru-cache, give it a namespace, and save it locally
+    if (caches[request.namespace]) {
+      lru = caches[request.namespace];
+      // update property values as needed
+      ['max', 'maxAge', 'stale'].forEach((prop) => {
+        if (options[prop] && options[prop] !== lru[prop]) {
+          lru[prop] = options[prop];
+        }
+      });
+    } else {
+      created = true;
+      lru = caches[request.namespace] = new LRUCache(...params);
+      // start a job to clean the cache
+      if (params[0].prune) {
+        lru.job = startPruneCronJob(lru, params[0].prune, request.namespace);
+      }
+    }
+    sendResponse(
+      {
+        value: {
+          namespace: request.namespace,
+          isnew: created,
+          max: lru.max,
+          maxAge: lru.maxAge,
+          stale: lru.stale,
+        },
+      },
+      request,
+      worker
+    );
+  };
+
+  const getCacheConfigValue = function (request, params, worker) {
+    const lru = caches[request.namespace];
+    if (params[0]) {
+      lru[request.func] = params[0];
+    }
+    return sendResponse(
+      {
+        value: lru[request.func],
+      },
+      request,
+      worker
+    );
+  };
+
+  const incrementOrDecrement = function (request, params, worker) {
+    const lru = caches[request.namespace];
+    // get the current value
+    let value = lru.get(params[0]);
+    // maybe initialize and increment
+    value =
+      (typeof value === 'number' ? value : 0) +
+      (params[1] || 1) * (request.func === 'decr' ? -1 : 1);
+    // set the new value
+    lru.set(params[0], value);
+    // send the new value
+    return sendResponse(
+      {
+        value,
+      },
+      request,
+      worker
+    );
+  };
+
   // for each worker created...
   cluster.on('fork', (worker) => {
     // wait for the worker to send a message
     worker.on('message', (request) => {
       if (request.source !== source) return;
       messages(`Master recieved message from worker ${worker.id}`, request);
-
-      /**
-       * Sends the response back to the worker thread
-       * @param  {Object} data The response from the cache
-       */
-      function sendResponse(data) {
-        const response = data;
-        response.source = source;
-        response.id = request.id;
-        response.func = request.func;
-        messages(`Master sending response to worker ${worker.id}`, response);
-        worker.send(response);
-      }
 
       // try to load an existing lru-cache
       let lru = caches[request.namespace];
@@ -103,92 +180,52 @@ if (cluster.isMaster) {
       switch (request.func) {
         // constructor request
         case '()': {
-          let created = false;
-          const options = params[0];
-          // create a new lru-cache, give it a namespace, and save it locally
-          if (caches[request.namespace]) {
-            lru = caches[request.namespace];
-            // update property values as needed
-            ['max', 'maxAge', 'stale'].forEach((prop) => {
-              if (options[prop] && options[prop] !== lru[prop]) {
-                lru[prop] = options[prop];
-              }
-            });
-          } else {
-            created = true;
-            lru = caches[request.namespace] = new LRUCache(...params);
-            // start a job to clean the cache
-            if (params[0].prune) {
-              lru.job = startPruneCronJob(lru, params[0].prune, request.namespace);
-            }
-          }
-          sendResponse({
-            value: {
-              namespace: request.namespace,
-              isnew: created,
-              max: lru.max,
-              maxAge: lru.maxAge,
-              stale: lru.stale,
-            },
-          });
+          construct(request, params, worker);
           break;
         }
         case 'max':
         case 'maxAge':
         case 'stale': {
-          lru = caches[request.namespace];
-          if (params[0]) {
-            lru[request.func] = params[0];
-          }
-          sendResponse({
-            value: lru[request.func],
-          });
+          getCacheConfigValue(request, params, worker);
           break;
         }
         case 'decr':
         case 'incr': {
-          // get the current value
-          let value = lru.get(params[0]);
-          // maybe initialize and increment
-          value = (typeof value === 'number' ? value : 0) +
-            ((params[1] || 1) * (request.func === 'decr' ? -1 : 1));
-          // set the new value
-          lru.set(params[0], value);
-          // send the new value
-          sendResponse({
-            value,
-          });
+          incrementOrDecrement(request, params, worker);
           break;
         }
         case 'mGet': {
           const mGetValues = funcs.mGet(lru, params);
-          sendResponse({ value: mGetValues });
-          break;
+          return sendResponse({ value: mGetValues }, request, worker);
         }
         case 'mSet': {
           funcs.mSet(lru, params);
-          sendResponse({ value: true });
-          break;
+          return sendResponse({ value: true }, request, worker);
         }
         case 'mDel': {
           funcs.mDel(lru, params);
-          sendResponse({ value: true });
-          break;
+          return sendResponse({ value: true }, request, worker);
         }
         // return the property value
         case 'length':
         case 'itemCount': {
-          sendResponse({
-            value: lru[request.func],
-          });
-          break;
+          return sendResponse(
+            {
+              value: lru[request.func],
+            },
+            request,
+            worker
+          );
         }
         // return the function value
         default: {
-          sendResponse({
-            value: lru[request.func](...params),
-          });
-          break;
+          return sendResponse(
+            {
+              value: lru[request.func](...params),
+            },
+            request,
+            worker
+          );
         }
       }
     });
@@ -260,49 +297,73 @@ function LRUCacheForClustersAsPromised(opts) {
     if (cluster.isMaster) {
       // acting on the local lru-cache
       messages(cache.namespace, args);
+      let promise;
       switch (func) {
         case 'max':
         case 'maxAge':
         case 'stale': {
-          if (funcArgs[0]) {
-            lru[func] = funcArgs[0];
-          }
-          return Promise.resolve(lru[func]);
+          promise = new Promise((resolve) => {
+            if (funcArgs[0]) {
+              lru[func] = funcArgs[0];
+            }
+            return resolve(lru[func]);
+          });
+          break;
         }
         case 'decr':
         case 'incr': {
-          // get the current value default to 0
-          let value = lru.get(funcArgs[0]);
-          // maybe initialize and increment
-          value = (typeof value === 'number' ? value : 0) +
-            ((funcArgs[1] || 1) * (func === 'decr' ? -1 : 1));
-          // set the new value
-          lru.set(funcArgs[0], value);
-          // resolve the new value
-          return Promise.resolve(value);
+          promise = new Promise((resolve) => {
+            // get the current value default to 0
+            let value = lru.get(funcArgs[0]);
+            // maybe initialize and increment
+            value =
+              (typeof value === 'number' ? value : 0) +
+              (funcArgs[1] || 1) * (func === 'decr' ? -1 : 1);
+            // set the new value
+            lru.set(funcArgs[0], value);
+            // resolve the new value
+            return resolve(value);
+          });
+          break;
         }
         case 'mGet': {
-          const mGetValues = funcs.mGet(lru, funcArgs);
-          return Promise.resolve(mGetValues);
+          promise = new Promise((resolve) => {
+            const mGetValues = funcs.mGet(lru, funcArgs);
+            return resolve(mGetValues);
+          });
+          break;
         }
         case 'mSet': {
-          funcs.mSet(lru, funcArgs);
-          return Promise.resolve(true);
+          promise = new Promise((resolve) => {
+            funcs.mSet(lru, funcArgs);
+            return resolve(true);
+          });
+          break;
         }
         case 'mDel': {
-          funcs.mDel(lru, funcArgs);
-          return Promise.resolve(true);
+          promise = new Promise((resolve) => {
+            funcs.mDel(lru, funcArgs);
+            return resolve(true);
+          });
+          break;
         }
         case 'itemCount':
         case 'length': {
           // return the property value
-          return Promise.resolve(lru[func]);
+          promise = new Promise((resolve) => {
+            return resolve(lru[func]);
+          });
+          break;
         }
         default: {
           // just call the function on the lru-cache
-          return Promise.resolve(lru[func](...funcArgs));
+          promise = new Promise((resolve) => {
+            return resolve(lru[func](...funcArgs));
+          });
+          break;
         }
       }
+      return promise;
     }
     return new Promise((resolve, reject) => {
       // create the request to the master
@@ -314,13 +375,16 @@ function LRUCacheForClustersAsPromised(opts) {
         arguments: funcArgs,
       };
       // if we don't get a response in 100ms, return undefined
-      let failsafeTimeout = setTimeout(() => {
-        failsafeTimeout = undefined;
-        if (cache.failsafe === 'reject') {
-          return reject(new Error('Timed out in isFailed()'));
-        }
-        return resolve(undefined);
-      }, func === '()' ? 5000 : cache.timeout);
+      let failsafeTimeout = setTimeout(
+        () => {
+          failsafeTimeout = null;
+          if (cache.failsafe === 'reject') {
+            return reject(new Error('Timed out in isFailed()'));
+          }
+          return resolve();
+        },
+        func === '()' ? 5000 : cache.timeout
+      );
       // set the callback for this id to resolve the promise
       callbacks[request.id] = (result) => {
         if (failsafeTimeout) {
@@ -337,11 +401,12 @@ function LRUCacheForClustersAsPromised(opts) {
   if (cluster.isWorker) {
     // create a new LRU cache on the master
     promiseTo('()', options)
-        .then((lruOptions) => debug('created lru cache on master', lruOptions))
-        .catch((err) => {
-          /* istanbul ignore next */
+      .then((lruOptions) => debug('created lru cache on master', lruOptions))
+      .catch(
+        /* istanbul ignore next */ (err) => {
           debug('failed to create lru cache on master', err, options);
-        });
+        }
+      );
   }
 
   // the lru-cache functions we are able to provide. Note that length()
@@ -350,22 +415,28 @@ function LRUCacheForClustersAsPromised(opts) {
   return {
     set: (key, value, maxAge) => promiseTo('set', key, value, maxAge),
     get: (key) => promiseTo('get', key),
-    setObject: (key, value, maxAge) => promiseTo('set', key, JSON.stringify(value), maxAge),
-    getObject: (key) => promiseTo('get', key).then((value) => Promise.resolve(value ? JSON.parse(value) : undefined)),
+    setObject: (key, value, maxAge) =>
+      promiseTo('set', key, flatted.stringify(value), maxAge),
+    getObject: (key) =>
+      promiseTo('get', key).then((value) =>
+        // eslint-disable-next-line no-undefined
+        Promise.resolve(value ? flatted.parse(value) : undefined)
+      ),
     del: (key) => promiseTo('del', key),
     mGet: (keys) => promiseTo('mGet', keys),
     mSet: (pairs, maxAge) => promiseTo('mSet', pairs, maxAge),
-    mGetObjects: (keys) => promiseTo('mGet', keys).then((pairs) => {
-      const objs = {};
-      return funcs
+    mGetObjects: (keys) =>
+      promiseTo('mGet', keys).then((pairs) => {
+        const objs = {};
+        return funcs
           .mapObjects(pairs, objs, 'parse')
           .then(() => Promise.resolve(objs));
-    }),
+      }),
     mSetObjects: (pairs, maxAge) => {
       const objs = {};
       return funcs
-          .mapObjects(pairs, objs, 'stringify')
-          .then(() => promiseTo('mSet', objs, maxAge));
+        .mapObjects(pairs, objs, 'stringify')
+        .then(() => promiseTo('mSet', objs, maxAge));
     },
     mDel: (keys) => promiseTo('mDel', keys),
     peek: (key) => promiseTo('peek', key),
