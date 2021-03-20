@@ -1,13 +1,9 @@
 #!/usr/bin/env node
 
-module.exports = function getOptions (depcheck){
+module.exports = function getOptions(depcheck) {
   return {
     ignoreBinPackage: false,
-    ignoreDirs: [
-      'coverage',
-      'dist',
-      'tmp',
-    ],
+    ignoreDirs: ['coverage', 'dist', 'tmp'],
     ignoreMatches: [
       'depcheck',
       'nyc',
@@ -17,16 +13,19 @@ module.exports = function getOptions (depcheck){
       'sloc',
       'spec-xunit-file',
     ],
-    parsers: { // the target parsers
-      '*.js': depcheck.parser.es6
+    parsers: {
+      // the target parsers
+      '*.js': depcheck.parser.es6,
     },
-    detectors: [ // the target detectors 
+    detectors: [
+      // the target detectors
       depcheck.detector.requireCallExpression,
-      depcheck.detector.importDeclaration
+      depcheck.detector.importDeclaration,
     ],
-    specials: [ // the target special parsers 
+    specials: [
+      // the target special parsers
       depcheck.special.eslint,
-      depcheck.special.mocha
+      depcheck.special.mocha,
     ],
   };
 };

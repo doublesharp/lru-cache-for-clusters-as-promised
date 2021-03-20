@@ -1,7 +1,6 @@
 // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#lru-cache-for-clusters-as-promised
 declare module "lru-cache-for-clusters-as-promised" {
 
-
     // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#example-usage
     class Cache <G1 = never, G2 = never, G3 = never, G4 = never> {
         constructor(options?: cacheConstructorParam);

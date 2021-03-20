@@ -17,15 +17,17 @@ if (process.env.running_under_istanbul) {
     exec: './node_modules/.bin/istanbul',
     args: [
       'cover',
-      '--report', 'none',
-      '--print', 'none',
+      '--report',
+      'none',
+      '--print',
+      'none',
       // output files will have the workers PID in the filename
       '--include-pid',
       workerPath,
       '--',
     ]
-    // append any additional command line arguments
-        .concat(process.argv.slice(2)),
+      // append any additional command line arguments
+      .concat(process.argv.slice(2)),
   });
 } else {
   // normal forking
@@ -70,8 +72,7 @@ module.exports = (done) => {
       const cache = new LRUCache({
         namespace: 'test-cache',
       });
-      cache.keys()
-          .then(() => done2());
+      cache.keys().then(() => done2());
     },
     getCacheMax: () => {
       const cache = new LRUCache({
