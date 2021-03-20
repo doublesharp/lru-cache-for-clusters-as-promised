@@ -1,5 +1,6 @@
 const config = require('./config');
 const cluster = require('cluster');
+const { parse, stringify } = require('flatted');
 const should = require('should');
 const LRUCache = require('../../');
 
@@ -192,12 +193,23 @@ function TestUtils(cache) {
         .catch((err) => cb(err));
     },
     circular_objects: (cb) => {
+      // this cache uses the flatted parse and stringify
+      const cacheCircular = new LRUCache({
+        namespace: 'circular-cache',
+        max: 3,
+        parse,
+        stringify,
+      });
+
+      // create a circular dependency
       const a = { b: null };
       const b = { a };
       b.a.b = b;
-      cache
+
+      // see if we can set and then extract the circular object
+      cacheCircular
         .setObject(1, a)
-        .then(() => cache.getObject(1))
+        .then(() => cacheCircular.getObject(1))
         .then((obj) => {
           should(obj).deepEqual(a);
           should(obj.b).deepEqual(b);

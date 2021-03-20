@@ -14,7 +14,6 @@ const CronJob = require('cron').CronJob;
 const Debug = require('debug');
 const uuid = require('uuid');
 const LRUCache = require('lru-cache');
-const flatted = require('flatted');
 
 const debug = new Debug('lru-cache-for-clusters-as-promised');
 const messages = new Debug('lru-cache-for-clusters-as-promised-messages');
@@ -54,7 +53,7 @@ const funcs = {
   mapObjects: (pairs, objs, jsonFunction) =>
     Promise.all(
       Object.keys(pairs).map((key) =>
-        Promise.resolve((objs[key] = flatted[jsonFunction](pairs[key])))
+        Promise.resolve((objs[key] = jsonFunction(pairs[key])))
       )
     ),
   mDel: (lru, params) => {
@@ -84,7 +83,7 @@ const funcs = {
  * @param  {Object} request The request
  * @param  {Object} worker The worker sending the response
  */
-function sendResponse(data, request, worker) {
+function sendResponseToWorker(data, request, worker) {
   const response = data;
   response.source = source;
   response.id = request.id;
@@ -116,7 +115,7 @@ if (cluster.isMaster) {
         lru.job = startPruneCronJob(lru, params[0].prune, request.namespace);
       }
     }
-    sendResponse(
+    sendResponseToWorker(
       {
         value: {
           namespace: request.namespace,
@@ -136,7 +135,7 @@ if (cluster.isMaster) {
     if (params[0]) {
       lru[request.func] = params[0];
     }
-    return sendResponse(
+    return sendResponseToWorker(
       {
         value: lru[request.func],
       },
@@ -156,7 +155,7 @@ if (cluster.isMaster) {
     // set the new value
     lru.set(params[0], value);
     // send the new value
-    return sendResponse(
+    return sendResponseToWorker(
       {
         value,
       },
@@ -196,20 +195,20 @@ if (cluster.isMaster) {
         }
         case 'mGet': {
           const mGetValues = funcs.mGet(lru, params);
-          return sendResponse({ value: mGetValues }, request, worker);
+          return sendResponseToWorker({ value: mGetValues }, request, worker);
         }
         case 'mSet': {
           funcs.mSet(lru, params);
-          return sendResponse({ value: true }, request, worker);
+          return sendResponseToWorker({ value: true }, request, worker);
         }
         case 'mDel': {
           funcs.mDel(lru, params);
-          return sendResponse({ value: true }, request, worker);
+          return sendResponseToWorker({ value: true }, request, worker);
         }
         // return the property value
         case 'length':
         case 'itemCount': {
-          return sendResponse(
+          return sendResponseToWorker(
             {
               value: lru[request.func],
             },
@@ -219,7 +218,7 @@ if (cluster.isMaster) {
         }
         // return the function value
         default: {
-          return sendResponse(
+          return sendResponseToWorker(
             {
               value: lru[request.func](...params),
             },
@@ -251,13 +250,10 @@ if (cluster.isWorker) {
  * that resolves the Promise. For non-clustered environments a Promisfied interface
  * to the cache is provided to match the interface for clustered environments.
  *
- * @param {Object} opts The lru-cache options. Properties can be set, functions cannot.
+ * @param {Object} options The lru-cache options. Properties can be set, functions cannot.
  * @return {Object} Object with LRU methods
  */
-function LRUCacheForClustersAsPromised(opts) {
-  // default to some empty options
-  const options = opts || {};
-
+function LRUCacheForClustersAsPromised(options = {}) {
   // keep a reference as 'this' is lost inside the Promise contexts
   const cache = this;
 
@@ -270,9 +266,14 @@ function LRUCacheForClustersAsPromised(opts) {
   // how should timeouts be handled - default is resolve(undefined), otherwise reject(Error)
   cache.failsafe = options.failsafe === 'reject' ? 'reject' : 'resolve';
 
+  cache.parse = options.parse || JSON.parse;
+  cache.stringify = options.stringify || JSON.stringify;
+
+  let promiseTo;
+
   // if this is the master thread, we just promisify an lru-cache
-  let lru = null;
   if (cluster.isMaster) {
+    let lru = null;
     if (caches[cache.namespace]) {
       lru = caches[cache.namespace];
       debug(`Loaded cache from shared namespace ${cache.namespace}`);
@@ -284,17 +285,14 @@ function LRUCacheForClustersAsPromised(opts) {
       }
       debug(`Created new LRU cache ${cache.namespace}`);
     }
-  }
-
-  // return a promise that resolves to the result of the method on
-  // the local lru-cache this is the master thread, or from the
-  // lru-cache on the master thread if this is a worker
-  const promiseTo = (...args) => {
-    // first argument is the function to run
-    const func = args[0];
-    // the rest of the args are the function arguments of N length
-    const funcArgs = Array.prototype.slice.call(args, 1, args.length);
-    if (cluster.isMaster) {
+    // return a promise that resolves to the result of the method on
+    // the local lru-cache this is the master thread, or from the
+    // lru-cache on the master thread if this is a worker
+    promiseTo = (...args) => {
+      // first argument is the function to run
+      const func = args[0];
+      // the rest of the args are the function arguments of N length
+      const funcArgs = Array.prototype.slice.call(args, 1, args.length);
       // acting on the local lru-cache
       messages(cache.namespace, args);
       let promise;
@@ -364,41 +362,51 @@ function LRUCacheForClustersAsPromised(opts) {
         }
       }
       return promise;
-    }
-    return new Promise((resolve, reject) => {
-      // create the request to the master
-      const request = {
-        source,
-        namespace: cache.namespace,
-        id: uuid.v4(),
-        func,
-        arguments: funcArgs,
-      };
-      // if we don't get a response in 100ms, return undefined
-      let failsafeTimeout = setTimeout(
-        () => {
-          failsafeTimeout = null;
-          if (cache.failsafe === 'reject') {
-            return reject(new Error('Timed out in isFailed()'));
+    };
+  } else {
+    // cluster.isWorker
+    // return a promise that resolves to the result of the method on
+    // the local lru-cache this is the master thread, or from the
+    // lru-cache on the master thread if this is a worker
+    promiseTo = (...args) => {
+      // first argument is the function to run
+      const func = args[0];
+      // the rest of the args are the function arguments of N length
+      const funcArgs = Array.prototype.slice.call(args, 1, args.length);
+      // cluster.isWorker
+      return new Promise((resolve, reject) => {
+        // create the request to the master
+        const request = {
+          source,
+          namespace: cache.namespace,
+          id: uuid.v4(),
+          func,
+          arguments: funcArgs,
+        };
+        // if we don't get a response in 100ms, return undefined
+        let failsafeTimeout = setTimeout(
+          () => {
+            failsafeTimeout = null;
+            if (cache.failsafe === 'reject') {
+              return reject(new Error('Timed out in isFailed()'));
+            }
+            return resolve();
+          },
+          func === '()' ? 5000 : cache.timeout
+        );
+        // set the callback for this id to resolve the promise
+        callbacks[request.id] = (result) => {
+          if (failsafeTimeout) {
+            clearTimeout(failsafeTimeout);
+            return resolve(result.value);
           }
-          return resolve();
-        },
-        func === '()' ? 5000 : cache.timeout
-      );
-      // set the callback for this id to resolve the promise
-      callbacks[request.id] = (result) => {
-        if (failsafeTimeout) {
-          clearTimeout(failsafeTimeout);
-          return resolve(result.value);
-        }
-        return false;
-      };
-      // send the request to the master process
-      process.send(request);
-    });
-  };
+          return false;
+        };
+        // send the request to the master process
+        process.send(request);
+      });
+    };
 
-  if (cluster.isWorker) {
     // create a new LRU cache on the master
     promiseTo('()', options)
       .then((lruOptions) => debug('created lru cache on master', lruOptions))
@@ -416,11 +424,11 @@ function LRUCacheForClustersAsPromised(opts) {
     set: (key, value, maxAge) => promiseTo('set', key, value, maxAge),
     get: (key) => promiseTo('get', key),
     setObject: (key, value, maxAge) =>
-      promiseTo('set', key, flatted.stringify(value), maxAge),
+      promiseTo('set', key, cache.stringify(value), maxAge),
     getObject: (key) =>
       promiseTo('get', key).then((value) =>
         // eslint-disable-next-line no-undefined
-        Promise.resolve(value ? flatted.parse(value) : undefined)
+        Promise.resolve(value ? cache.parse(value) : undefined)
       ),
     del: (key) => promiseTo('del', key),
     mGet: (keys) => promiseTo('mGet', keys),
@@ -429,13 +437,13 @@ function LRUCacheForClustersAsPromised(opts) {
       promiseTo('mGet', keys).then((pairs) => {
         const objs = {};
         return funcs
-          .mapObjects(pairs, objs, 'parse')
+          .mapObjects(pairs, objs, cache.parse)
           .then(() => Promise.resolve(objs));
       }),
     mSetObjects: (pairs, maxAge) => {
       const objs = {};
       return funcs
-        .mapObjects(pairs, objs, 'stringify')
+        .mapObjects(pairs, objs, cache.stringify)
         .then(() => promiseTo('mSet', objs, maxAge));
     },
     mDel: (keys) => promiseTo('mDel', keys),
