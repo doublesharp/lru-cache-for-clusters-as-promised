@@ -1,3 +1,13 @@
+1.6.0 / 2021-03-20
+==================
+
+  * Refactor codebase to be more maintainable
+  * Support for external `parse` and `stringify` functions, used for object caching, more efficient on large objects
+  * Update tests, 100% code coverage
+  * Update documentation
+  * Update dependencies
+  * npm audit fix
+
 1.5.25 / 2021-03-02
 ==================
 

@@ -1,4 +1,4 @@
-const config = require('./config');
+const config = require('./test-config');
 const express = require('express');
 const http = require('http');
 const LRUCache = require('../../');
@@ -7,6 +7,7 @@ const TestUtils = require('./test-utils');
 // this will be the SAME cache no matter which module calls it.
 const initCache = new LRUCache();
 initCache.keys();
+
 // this will be the SAME cache no matter which module calls it.
 const defaultCache = new LRUCache({
   max: 1,

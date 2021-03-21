@@ -1,9 +1,8 @@
-const config = require('./config');
+const config = require('./test-config');
 const cluster = require('cluster');
 const { parse, stringify } = require('flatted');
 const should = require('should');
-const LRUCache = require('../../');
-
+const LRUCacheForClustersAsPromised = require('../../');
 const member = cluster.isWorker ? 'worker' : 'master';
 
 /**
@@ -12,6 +11,12 @@ const member = cluster.isWorker ? 'worker' : 'master';
  * @return {void} Node style callback
  */
 function TestUtils(cache) {
+  const object = { foo: 'bar' };
+  const pairs = {
+    foo: 'bar',
+    bizz: 'buzz',
+  };
+  const keys = Object.keys(pairs);
   return {
     clusterTests: {
       hi: 'not respond to messages that are from somewhere else',
@@ -59,531 +64,500 @@ function TestUtils(cache) {
       setMaxAge: 'maxAge(10)',
       setStale: 'stale(true)',
     },
-    mSet: (cb) => {
-      const pairs = {
-        foo: 'bar',
-        bizz: 'buzz',
-      };
-      cache
-        .mSet(pairs)
-        .then(() => cache.get('bizz'))
-        .then((value) => {
-          should(value).equal('buzz');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mSet: async (cb) => {
+      try {
+        await cache.mSet(pairs);
+        const value = await cache.get(keys[0]);
+        should(value).equal(pairs[keys[0]]);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    mSetNull: (cb) => {
-      const pairs = null;
-      cache
-        .mSet(pairs)
-        .then(() => cache.mSet('string'))
-        .then(() => cache.mSet(['array']))
-        .then(() => {
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mSetNull: async (cb) => {
+      try {
+        await cache.mSet(null);
+        await cache.mSet('string');
+        await cache.mSet(['array']);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    mGet: (cb) => {
-      const pairs = {
-        foo: 'bar',
-        bizz: 'buzz',
-      };
-      cache
-        .mSet(pairs)
-        .then(() => cache.mGet(['bizz', 'foo']))
-        .then((values) => {
-          // should(values).not.equal(undefined);
-          should(values.bizz).equal('buzz');
-          should(values.foo).equal('bar');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mGet: async (cb) => {
+      try {
+        await cache.mSet(pairs);
+        const values = await cache.mGet(keys);
+        should(typeof values).not.equal('undefined');
+        should(values.bizz).equal(pairs.bizz);
+        should(values.foo).equal(pairs.foo);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    mGetAndSetObjects: (cb) => {
-      const pairs = {
-        foo: { boo: 'bar' },
-        bizz: { bam: 'buzz' },
-      };
-      cache
-        .mSetObjects(pairs)
-        .then(() => cache.mGetObjects(['bizz', 'foo']))
-        .then((values) => {
-          should(values.bizz).deepEqual({ bam: 'buzz' });
-          should(values.foo).deepEqual({ boo: 'bar' });
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mGetAndSetObjects: async (cb) => {
+      try {
+        await cache.mSetObjects(pairs);
+        const values = await cache.mGetObjects(keys);
+        should(values.bizz).deepEqual(pairs.bizz);
+        should(values.foo).deepEqual(pairs.foo);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    mGetNull: (cb) => {
-      cache
-        .mGet('string')
-        .then((values) => {
-          should(values).deepEqual({});
-          return cache.mGet(null);
-        })
-        .then((values) => {
-          should(values).deepEqual({});
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mGetNull: async (cb) => {
+      try {
+        let values = await cache.mGet('string');
+        should(values).deepEqual({});
+        values = await cache.mGet(null);
+        should(values).deepEqual({});
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    mDel: (cb) => {
-      const pairs = {
-        my: 'bar',
-        get: 'buzz',
-      };
-      cache
-        .mSet(pairs)
-        .then(() => cache.mDel(['my', 'get']))
-        .then(() => cache.get('get'))
-        .then((value) => {
-          should(typeof value).equal('undefined');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mDel: async (cb) => {
+      try {
+        await cache.mSet(pairs);
+        await cache.mDel(keys);
+        const value = await cache.get(keys[0]);
+        should(typeof value).equal('undefined');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    mDelNull: (cb) => {
-      const pairs = {
-        foo: 'whamo',
-        bizz: 'blamo',
-      };
-      cache
-        .mSet(pairs)
-        .then(() => cache.mDel(null))
-        .then(() => cache.get('bizz'))
-        .then((value) => {
-          should(value).equal('blamo');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    mDelNull: async (cb) => {
+      try {
+        await cache.mSet(pairs);
+        await cache.mDel(null);
+        const value = await cache.get(keys[0]);
+        should(value).equal(pairs[keys[0]]);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    objects: (cb) => {
-      const myObj = { foo: 'bar' };
-      cache
-        .setObject(1, myObj)
-        .then(() => cache.getObject(1))
-        .then((obj) => {
-          should(obj).not.equal(null);
-          should(obj.foo).equal('bar');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    objects: async (cb) => {
+      try {
+        await cache.setObject(1, object);
+        const obj = await cache.getObject(1);
+        should(obj).not.equal(null);
+        should(obj.foo).equal(object.foo);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    undefined_objects: (cb) => {
-      let object;
-      cache
-        .setObject(1, object)
-        .then(() => cache.getObject(1))
-        .then((obj) => {
-          should(typeof obj).equal('undefined');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    undefined_objects: async (cb) => {
+      try {
+        let object;
+        await cache.setObject(1, object);
+        const obj = await cache.getObject(1);
+        should(typeof obj).equal('undefined');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    null_objects: (cb) => {
-      const object = null;
-      cache
-        .setObject(1, object)
-        .then(() => cache.getObject(1))
-        .then((obj) => {
-          should(obj).equal(null);
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    null_objects: async (cb) => {
+      try {
+        let object = null;
+        await cache.setObject(1, object);
+        const obj = await cache.getObject(1);
+        should(obj).equal(null);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    circular_objects: (cb) => {
-      // this cache uses the flatted parse and stringify
-      const cacheCircular = new LRUCache({
-        namespace: 'circular-cache',
-        max: 3,
-        parse,
-        stringify,
-      });
+    circular_objects: async (cb) => {
+      try {
+        // this cache uses the flatted parse and stringify
+        const cacheCircular = new LRUCacheForClustersAsPromised({
+          namespace: 'circular-cache',
+          max: 3,
+          parse,
+          stringify,
+        });
 
-      // create a circular dependency
-      const a = { b: null };
-      const b = { a };
-      b.a.b = b;
+        // create a circular dependency
+        const a = { b: null };
+        const b = { a };
+        b.a.b = b;
 
-      // see if we can set and then extract the circular object
-      cacheCircular
-        .setObject(1, a)
-        .then(() => cacheCircular.getObject(1))
-        .then((obj) => {
-          should(obj).deepEqual(a);
-          should(obj.b).deepEqual(b);
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+        // see if we can set and then extract the circular object
+        await cacheCircular.setObject(1, a);
+        const obj = await cacheCircular.getObject(1);
+
+        should(obj).deepEqual(a);
+        should(obj.b).deepEqual(b);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    miss_undefined: (cb) => {
-      cache
-        .getObject(1)
-        .then((obj) => {
-          should(typeof obj).equal('undefined');
-          cb(null, true);
-        })
-        .catch((err) => cb(err));
+    miss_undefined: async (cb) => {
+      try {
+        const obj = await cache.getObject(1);
+        should(typeof obj).equal('undefined');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    hi: (cb) => {
-      let responded = false;
-      const callback = (response) => {
-        if (!responded) {
-          responded = true;
-          should(response).equal('hello');
-          cb(null, true);
+    hi: async (cb) => {
+      try {
+        let responded = false;
+        const callback = (response) => {
+          if (!responded) {
+            responded = true;
+            should(response).equal('hello');
+            cb(null, true);
+          }
+        };
+        process.on('message', (response) => callback && callback(response));
+        process.send('hi');
+      } catch (err) {
+        cb(err);
+      }
+    },
+    timeout: async (cb) => {
+      try {
+        const cacheBad = new LRUCacheForClustersAsPromised({
+          max: 1,
+          stale: false,
+          timeout: 1,
+          namespace: `bad-cache-resolve-${member}`,
+        });
+        let large = '1234567890';
+        for (let i = 0; i < 17; i += 1) {
+          large += large;
         }
-      };
-      process.on('message', (response) => callback && callback(response));
-      process.send('hi');
-    },
-    timeout: (cb) => {
-      const cacheBad = new LRUCache({
-        max: 1,
-        stale: false,
-        timeout: 1,
-        namespace: `bad-cache-resolve-${member}`,
-      });
-      let large = '1234567890';
-      for (let i = 0; i < 17; i += 1) {
-        large += large;
+        const result = await cacheBad.get(`bad-cache-key-${large}`);
+        cb(null, result);
+      } catch (err) {
+        cb(err);
       }
-      return cacheBad
-        .get(`bad-cache-key-${large}`)
-        .then((result) => cb(null, result))
-        .catch((err) => cb(err));
     },
-    reject: (cb) => {
-      const cacheBad = new LRUCache({
-        max: 2,
-        stale: false,
-        timeout: 1,
-        failsafe: 'reject',
-        namespace: `bad-cache-reject-${member}`,
-      });
-      let large = '1234567890';
-      for (let i = 0; i < 17; i += 1) {
-        large += large;
+    reject: async (cb) => {
+      try {
+        const cacheBad = new LRUCacheForClustersAsPromised({
+          max: 2,
+          stale: false,
+          timeout: 1,
+          failsafe: 'reject',
+          namespace: `bad-cache-reject-${member}`,
+        });
+        let large = '1234567890';
+        for (let i = 0; i < 17; i += 1) {
+          large += large;
+        }
+        await cacheBad.get(`bad-cache-key-${large}`);
+        cb('fail');
+      } catch (err) {
+        cb(null, true);
       }
-      return cacheBad
-        .get(`bad-cache-key-${large}`)
-        .then(() => cb('fail'))
-        .catch(() => cb(null, true));
     },
-    pruneJob: (cb) => {
-      const prunedCache = new LRUCache({
-        max: 10,
-        stale: true,
-        maxAge: 100,
-        namespace: `pruned-cache-${member}`,
-        prune: '*/1 * * * * *',
-      });
-      prunedCache
-        .set(config.args.one, config.args.one)
-        .then(() => prunedCache.set(config.args.two, config.args.two, 2000))
-        .then(() => prunedCache.itemCount())
-        .then((itemCount) => {
-          // we should see 2 items in the cache
-          should(itemCount).equal(2);
-          // check again in 1100 ms
-          setTimeout(() => {
-            // one of the items should have been removed based on the expiration
-            prunedCache.itemCount().then((itemCount2) => {
-              try {
-                should(itemCount2).equal(1);
-                return cb(null, true);
-              } catch (err) {
-                return cb(err);
-              }
-            });
-          }, 1100);
-        })
-        .catch((err) => cb(err));
+    pruneJob: async (cb) => {
+      try {
+        const prunedCache = new LRUCacheForClustersAsPromised({
+          max: 10,
+          stale: true,
+          maxAge: 100,
+          namespace: `pruned-cache-${member}`,
+          prune: '*/1 * * * * *',
+        });
+
+        await prunedCache.set(config.args.one, config.args.one);
+        await prunedCache.set(config.args.two, config.args.two, 2000);
+
+        const itemCount = await prunedCache.itemCount();
+        // we should see 2 items in the cache
+        should(itemCount).equal(2);
+        // check again in 1100 ms
+        setTimeout(async () => {
+          // one of the items should have been removed based on the expiration
+          const itemCount2 = await prunedCache.itemCount();
+          try {
+            should(itemCount2).equal(1);
+            return cb(null, true);
+          } catch (err) {
+            return cb(err);
+          }
+        }, 1100);
+      } catch (err) {
+        cb(err);
+      }
     },
-    set: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then((result) => cb(null, result))
-        .catch((err) => cb(err));
+    set: async (cb) => {
+      try {
+        const result = await cache.set(config.args.one, config.args.one);
+        cb(null, result);
+      } catch (err) {
+        cb(err);
+      }
     },
-    get: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then(() => cache.get(config.args.one))
-        .then((result) => {
-          should(result).equal(config.args.one);
-          return cb(null, result);
-        })
-        .catch((err) => cb(err));
+    get: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        const result = await cache.get(config.args.one);
+        should(result).equal(config.args.one);
+        cb(null, result);
+      } catch (err) {
+        cb(err);
+      }
     },
-    del: (cb) => {
-      cache
-        .del(config.args.one)
-        .then(() => cache.get(config.args.one))
-        .then((result) => {
-          should(typeof result).equal('undefined');
-          return cb(null, result);
-        })
-        .catch((err) => cb(err));
+    del: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        await cache.del(config.args.one);
+        const result = await cache.get(config.args.one);
+        should(typeof result).equal('undefined');
+        cb(null, result);
+      } catch (err) {
+        cb(err);
+      }
     },
-    incr: (cb) => {
-      cache
-        .incr(config.args.one)
-        .then((value) => {
-          should(value).eql(1);
-          return cache.incr(config.args.one);
-        })
-        .then((value) => {
-          should(value).eql(2);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    incr: async (cb) => {
+      try {
+        const value = await cache.incr(config.args.one);
+        should(value).eql(1);
+        const value2 = await cache.incr(config.args.one);
+        should(value2).eql(2);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    incr2: (cb) => {
-      const amount = 2;
-      cache
-        .incr(config.args.one, amount)
-        .then((value) => {
-          should(value).eql(2);
-          return cache.incr(config.args.one, amount);
-        })
-        .then((value) => {
-          should(value).eql(4);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    incr2: async (cb) => {
+      try {
+        const amount = 2;
+        const value = await cache.incr(config.args.one, amount);
+        should(value).eql(2);
+        const value2 = await cache.incr(config.args.one, amount);
+        should(value2).eql(4);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    decr: (cb) => {
-      cache
-        .decr(config.args.one)
-        .then((value) => {
-          should(value).eql(-1);
-          return cache.decr(config.args.one);
-        })
-        .then((value) => {
-          should(value).eql(-2);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    decr: async (cb) => {
+      try {
+        const value = await cache.decr(config.args.one);
+        should(value).eql(-1);
+        const value2 = await cache.decr(config.args.one);
+        should(value2).eql(-2);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    decr2: (cb) => {
-      const amount = 2;
-      cache
-        .decr(config.args.one, amount)
-        .then((value) => {
-          should(value).eql(-2);
-          return cache.decr(config.args.one, amount);
-        })
-        .then((value) => {
-          should(value).eql(-4);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    decr2: async (cb) => {
+      try {
+        const amount = 2;
+        const value = await cache.decr(config.args.one, amount);
+        should(value).eql(-2);
+        const value2 = await cache.decr(config.args.one, amount);
+        should(value2).eql(-4);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    peek: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then(() => cache.set(config.args.two, config.args.two))
-        .then(() => cache.set(config.args.three, config.args.three))
-        .then(() => cache.peek(config.args.one))
-        .then((result) => {
-          should(result).equal(config.args.one);
-          return cache.set(config.args.four, config.args.four);
-        })
-        .then(() => cache.get(config.args.one))
-        .then((result) => {
-          should(typeof result).equal('undefined');
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    peek: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        await cache.set(config.args.two, config.args.two);
+        await cache.set(config.args.three, config.args.three);
+        const result = await cache.peek(config.args.one);
+        should(result).equal(config.args.one);
+        await cache.set(config.args.four, config.args.four);
+        const result2 = await cache.get(config.args.one);
+        should(typeof result2).equal('undefined');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    has: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then(() => cache.has(config.args.one))
-        .then((has) => {
-          should(has).equal(true);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    has: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        const has = await cache.has(config.args.one);
+        should(has).equal(true);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    length: (cb) => {
-      cache
-        .set(config.args.two, config.args.two)
-        .then(() => cache.set(config.args.three, config.args.three))
-        .then(() => cache.length())
-        .then((length) => {
-          should(length).equal(2);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    length: async (cb) => {
+      try {
+        await cache.set(config.args.two, config.args.two);
+        await cache.set(config.args.three, config.args.three);
+        const length = await cache.length();
+        should(length).equal(2);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    itemCount: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then(() => cache.itemCount())
-        .then((itemCount) => {
-          should(itemCount).equal(1);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    itemCount: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        const itemCount = await cache.itemCount();
+        should(itemCount).equal(1);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    reset: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then(() => cache.reset())
-        .then(() => cache.get(config.args.one))
-        .then((result) => {
-          should(typeof result).equal('undefined');
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    reset: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        const result = await cache.get(config.args.one);
+        should(typeof result).equal('string');
+        await cache.reset();
+        const result2 = await cache.get(config.args.one);
+        should(typeof result2).equal('undefined');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    keys: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then((result) => {
-          should(result).equal(true);
-          return cache.keys();
-        })
-        .then((keys) => {
-          should(keys.length).equal(1);
-          should(keys[0]).equal(config.args.one);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    keys: async (cb) => {
+      try {
+        const result = await cache.set(config.args.one, config.args.one);
+        should(result).equal(true);
+        const keys = await cache.keys();
+        should(keys.length).equal(1);
+        should(keys[0]).equal(config.args.one);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    values: (cb) => {
-      cache
-        .set(config.args.two, config.args.two)
-        .then(() => cache.values())
-        .then((values) => {
-          should(values).deepEqual([config.args.two]);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    values: async (cb) => {
+      try {
+        await cache.set(config.args.two, config.args.two);
+        const values = await cache.values();
+        should(values).deepEqual([config.args.two]);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    prune: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then(() => cache.prune())
-        .then(() => cache.itemCount())
-        .then((itemCount) => {
-          should(itemCount).equal(1);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    prune: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.one);
+        await cache.prune();
+        const itemCount = await cache.itemCount();
+        should(itemCount).equal(1);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    dump: (cb) => {
-      cache
-        .set(config.args.one, config.args.two)
-        .then(() => cache.dump())
-        .then((dump) => {
-          should(dump[0].k).equal(config.args.one);
-          should(dump[0].v).equal(config.args.two);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    dump: async (cb) => {
+      try {
+        await cache.set(config.args.one, config.args.two);
+        const dump = await cache.dump();
+        should(dump[0].k).equal(config.args.one);
+        should(dump[0].v).equal(config.args.two);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    getMax: (cb) => {
-      cache
-        .max()
-        .then((max) => {
-          should(max).equal(3);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    getMax: async (cb) => {
+      try {
+        const max = await cache.max();
+        should(max).equal(3);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    getMaxAge: (cb) => {
-      cache
-        .maxAge()
-        .then((maxAge) => {
-          should(maxAge).equal(0);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    getMaxAge: async (cb) => {
+      try {
+        const maxAge = await cache.maxAge();
+        should(maxAge).equal(0);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    getStale: (cb) => {
-      cache
-        .stale()
-        .then((stale) => {
-          should(typeof stale).equal('undefined');
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    getStale: async (cb) => {
+      try {
+        const stale = await cache.stale();
+        should(typeof stale).equal('undefined');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    setMax: (cb) => {
-      cache
-        .max(100)
-        .then((max) => {
-          should(max).equal(100);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    setMax: async (cb) => {
+      try {
+        const max = await cache.max(10000);
+        should(max).equal(10000);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    setMaxAge: (cb) => {
-      cache
-        .maxAge(10)
-        .then((maxAge) => {
-          should(maxAge).equal(10);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    setMaxAge: async (cb) => {
+      try {
+        const maxAge = await cache.maxAge(10);
+        should(maxAge).equal(10);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    setStale: (cb) => {
-      cache
-        .stale(true)
-        .then((stale) => {
-          should(stale).equal(true);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    setStale: async (cb) => {
+      try {
+        const stale = await cache.stale(true);
+        should(stale).equal(true);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    addFour: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then((value) => {
-          should(value).equal(true);
-          return cache.set(config.args.two, config.args.two);
-        })
-        .then(() => cache.set(config.args.three, config.args.three))
-        .then(() => cache.set(config.args.four, config.args.four))
-        .then(() => cache.get(config.args.one))
-        .then((result) => {
-          should(typeof result).equal('undefined');
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    addFour: async (cb) => {
+      try {
+        const value = await cache.set(config.args.one, config.args.one);
+        should(value).equal(true);
+        await cache.set(config.args.two, config.args.two);
+        await cache.set(config.args.three, config.args.three);
+        await cache.set(config.args.four, config.args.four);
+        const result = await cache.get(config.args.one);
+        should(typeof result).equal('undefined');
+        const result2 = await cache.get(config.args.four);
+        should(result2).equal(config.args.four);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
-    addFourAccessOne: (cb) => {
-      cache
-        .set(config.args.one, config.args.one)
-        .then((value) => {
-          should(value).equal(true);
-          return cache.set(config.args.two, config.args.two);
-        })
-        .then((value) => {
-          should(value).equal(true);
-          return cache.set(config.args.three, config.args.three);
-        })
-        .then((value) => {
-          should(value).equal(true);
-          return cache.get(config.args.one);
-        })
-        .then((value) => {
-          should(value).equal(config.args.one);
-          return cache.set(config.args.four, config.args.four);
-        })
-        .then((value) => {
-          should(value).equal(true);
-          return cache.get(config.args.one);
-        })
-        .then((result) => {
-          should(result).equal(config.args.one);
-          return cb(null, true);
-        })
-        .catch((err) => cb(err));
+    addFourAccessOne: async (cb) => {
+      try {
+        const value = await cache.set(config.args.one, config.args.one);
+        should(value).equal(true);
+        const value2 = await cache.set(config.args.two, config.args.two);
+        should(value2).equal(true);
+        const value3 = await cache.set(config.args.three, config.args.three);
+        should(value3).equal(true);
+        const value4 = await cache.get(config.args.one);
+        should(value4).equal(config.args.one);
+        const value5 = await cache.set(config.args.four, config.args.four);
+        should(value5).equal(true);
+        const result = await cache.get(config.args.one);
+        should(result).equal(config.args.one);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
   };
 }

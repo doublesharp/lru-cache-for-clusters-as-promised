@@ -1,33 +1,10 @@
 {
   "parserOptions": {
-    "ecmaVersion": 2018
+    "ecmaVersion": 2021
   },
   "extends": "eslint:recommended",
   "env": {
     "es6": true,
     "node": true
-  },
-  "rules": {
-    "max-len": [
-      "error",
-      142,
-      2,
-      {
-        "ignoreStrings": true,
-        "ignoreTemplateLiterals": true
-      }
-    ],
-    "quotes": [
-      "error",
-      "single",
-      {
-        "avoidEscape": true
-      }
-    ],
-    "object-curly-spacing": ["error", "always"],
-    "no-underscore-dangle": 0,
-    "no-param-reassign": 0,
-    "no-undefined": "error",
-    "no-undef": "error"
   }
 }

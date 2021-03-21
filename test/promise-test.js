@@ -11,7 +11,7 @@ describe('LRU Cache as Promised', () => {
   const testUtils = new TestUtils(cache);
 
   afterEach((done) => {
-    testUtils.reset(() => done());
+    testUtils.reset(done);
   });
 
   ['tests'].forEach((test) => {

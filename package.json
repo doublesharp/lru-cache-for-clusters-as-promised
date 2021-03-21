@@ -1,6 +1,6 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.5.25",
+  "version": "1.6.0",
   "types": "index.d.ts",
   "description": "LRU Cache that is safe for clusters",
   "main": "./lru-cache-for-clusters-as-promised.js",
@@ -41,7 +41,6 @@
   "devDependencies": {
     "depcheck": "1.4.0",
     "eslint": "7.22.0",
-    "eslint-config-google": "0.14.0",
     "eslint-plugin-mocha": "8.1.0",
     "express": "4.17.1",
     "flatted": "^3.1.1",

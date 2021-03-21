@@ -1,5 +1,5 @@
 const request = require('supertest');
-const config = require('./lib/config');
+const config = require('./lib/test-config');
 const TestUtils = require('./lib/test-utils');
 
 let master = null;

@@ -40,7 +40,7 @@ yarn add lru-cache-for-clusters-as-promised
 * `stale: true|false`
   * When `true` expired items are return before they are removed rather than `undefined`
 * `prune: false|crontime string`, defaults to `false`
-  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds. Also works in single threaded environments not using the `cluster` module.
+  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds (See [`node-cron` patterns](https://www.npmjs.com/package/cron#available-cron-patterns) for more info). Also works in single threaded environments not using the `cluster` module.
 
 > ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
 
@@ -48,16 +48,20 @@ yarn add lru-cache-for-clusters-as-promised
 
 * `set(key, value, maxAge)`
   * Sets a value for a key. Specifying the `maxAge` will cause the value to expire per the `stale` value or when `prune`d.
+* `setObject(key, object, maxAge)`
+  * Sets a cache value where the value is an object. Passes the values through `cache.stringify()`, which defaults to `JSON.stringify()`. Use a custom parser like [`flatted`](https://www.npmjs.com/package/flatted) to cases like circular object references.
 * `mSet({ key1: 1, key2: 2, ...}, maxAge)`
   * Sets multiple key-value pairs in the cache at one time.
 * `mSetObjects({ key1: { obj: 1 }, key2: { obj: 2 }, ...}, maxAge)`
-  * Sets multiple key-value pairs in the cache at one time, where the value is an object.
+  * Sets multiple key-value pairs in the cache at one time, where the value is an object. Passes the values through `cache.stringify()`, see `cache.setObject()`;
 * `get(key)`
   * Returns a value for a key.
+* `getObject(key)`
+  * Returns an object value for a key. Passes the values through `cache.parse()`, which defaults to `JSON.parse()`. Use a custom parser like [`flatted`](https://www.npmjs.com/package/flatted) to cases like circular object references.
 * `mGet([key1, key2, ...])`
   * Returns values for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`.
 * `mGetObjects([key1, key2, ...])`
-  * Returns values as objects for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`.
+  * Returns values as objects for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`. Passes the values through `cache.parse()`, see `cache.getObject()`.
 * `peek(key)`
   * Returns the value for a key without updating its last access time.
 * `del(key)`
@@ -95,9 +99,7 @@ yarn add lru-cache-for-clusters-as-promised
 **Master**
 ```javascript
 // require the module in your master thread that creates workers to initialize
-const LRUCache = require('lru-cache-for-clusters-as-promised');
-
-LRUCache.init();
+require('lru-cache-for-clusters-as-promised').init();
 ```
 
 **Worker**
@@ -144,7 +146,34 @@ cache.set(key, user)
 .then((size) => {
   console.log('user cache size/itemCount', size);
 });
+```
 
+Use a custom object parser for the cache to handle cases like circular object references that `JSON.parse()` and `JSON.stringify()` cannot, or use custom revivers, etc.
+
+```
+const flatted = require('flatted');
+const LRUCache = require('lru-cache-for-clusters-as-promised');
+
+const cache = new LRUCache({
+  namespace: 'circular-objects',
+  max: 50,
+  parse: flatted.parse,
+  stringify: flatted.stringify,
+});
+
+// create a circular reference
+const a = { b: null };
+const b = { a };
+b.a.b = b;
+
+// this will work
+await cache.setObject(1, a);
+
+// this will return an object with the same circular reference via flatted
+const c = await cache.getObject(1);
+if (a == c && a.b === c.b) {
+  console.log('yes they are the same!');
+}
 ```
 
 # process flow
