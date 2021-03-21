@@ -10,6 +10,9 @@ declare module "lru-cache-for-clusters-as-promised" {
         // Sets a value for a key. Specifying the maxAge will cause the value to expire per the stale value or when pruned.
         set(key: string, value: G1 | G2 | G3 | G4, maxAge?: number): Promise<void>
 
+        // Sets a value for a key. Specifying the maxAge will cause the value to expire per the stale value or when pruned.
+        setObject(key: string, object: Object, maxAge?: number): Promise<void>
+
         // Sets multiple key-value pairs in the cache at one time.
         mSet(keys: { [index: string]: string | number }, maxAge?: number): Promise<void>
 
@@ -18,6 +21,9 @@ declare module "lru-cache-for-clusters-as-promised" {
 
         // Returns a value for a key.
         get(key: string): Promise<G1 | G2 | G3 | G4 | string | number>
+
+        // Returns a value for a key.
+        getObject(key: string): Promise<Object>
 
         // Returns values for multiple keys, results are in the form of { key1: '1', key2: '2' }.
         mGet(keys: Array<string>): Promise<{ [index: string]: string | number }>
@@ -98,7 +104,11 @@ declare module "lru-cache-for-clusters-as-promised" {
         // When true expired items are return before they are removed rather than undefined
         stale?: boolean,
         // Use a cron job on the master thread to call prune() on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds. Also works in single threaded environments not using the cluster module.
-        prune?: false | string
+        prune?: false | string,
+        // custom stringify function
+        stringify?: function,
+        // custom parse function
+        parse?: function,
     }
 
     module Cache {
