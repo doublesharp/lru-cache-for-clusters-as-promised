@@ -20,7 +20,7 @@ if (process.env.running_under_istanbul) {
       'none',
       '--print',
       'none',
-      '--include-all-sources',
+      // '--include-all-sources',
       // output files will have the workers PID in the filename
       '--include-pid',
       workerPath,
