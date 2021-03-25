@@ -31,7 +31,7 @@ const app = express();
     app.get(`/${method}`, (req, res) => {
       testUtils[method]((err) => {
         if (err) {
-          return res.send(err);
+          return res.send(err.message);
         }
         return res.send(true);
       });

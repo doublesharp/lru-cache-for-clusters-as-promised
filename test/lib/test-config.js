@@ -7,7 +7,7 @@ module.exports = {
     five: 'five',
   },
   server: {
-    port: process.env.PORT || 6666,
+    port: process.env.PORT || 4242,
     host: '127.0.0.1',
   },
 };
