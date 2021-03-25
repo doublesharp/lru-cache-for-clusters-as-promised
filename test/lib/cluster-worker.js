@@ -12,7 +12,6 @@ initCache.keys();
 const defaultCache = new LRUCache({
   max: 1,
   maxAge: 100000,
-  stale: true,
 });
 defaultCache.keys();
 
