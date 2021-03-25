@@ -7,9 +7,14 @@ describe('LRU Cache for Clusters', () => {
   const testUtils = new TestUtils();
 
   // run before the tests start
-  before((done) => {
+  before(function (done) {
     // This will call done with the cluster has forked and the worker is listening
+    this.timeout(5000);
     master = require('./lib/cluster-master')(done);
+  });
+
+  after((done) => {
+    master.shutdown(done);
   });
 
   afterEach((done) => {
