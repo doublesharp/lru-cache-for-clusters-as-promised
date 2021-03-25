@@ -1,3 +1,10 @@
+1.7.0 / 2021-03-25
+==================
+
+  * Refactoring for maintainability
+  * Update dependencies
+  * More reliable test coverage
+  
 1.6.1 / 2021-03-20
 ==================
 
