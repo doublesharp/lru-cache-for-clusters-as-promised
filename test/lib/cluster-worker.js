@@ -8,6 +8,8 @@ const TestUtils = require('./test-utils');
 const initCache = new LRUCache();
 initCache.keys();
 
+require('../../lib/worker');
+
 // this will be the SAME cache no matter which module calls it.
 const defaultCache = new LRUCache({
   max: 1,

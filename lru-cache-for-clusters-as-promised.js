@@ -12,12 +12,6 @@ const master = require('./lib/master');
 const worker = require('./lib/worker');
 const utils = require('./lib/utils');
 
-// setup the the master to handle messages for each worker
-master.processMessages();
-
-// setup each worker to handle messages from the master
-worker.processMessages();
-
 /**
  * LRUCacheForClustersAsPromised roughly approximates the functionality of LRUCache
  * but in a promisified way. When running as a cluster workers send requests to the
