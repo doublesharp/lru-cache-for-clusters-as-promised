@@ -1,5 +1,4 @@
 const cluster = require('cluster');
-const os = require('os');
 const path = require('path');
 const LRUCache = require('../../');
 
@@ -21,6 +20,7 @@ if (process.env.running_under_istanbul) {
       'none',
       '--print',
       'none',
+      '--include-all-sources',
       // output files will have the workers PID in the filename
       '--include-pid',
       workerPath,
@@ -47,7 +47,7 @@ cluster.on('fork', (worker) => {
 });
 
 // create one process per CPU core
-const workers = os.cpus().length;
+const workers = 20;
 for (let i = 0; i < workers; i += 1) {
   cluster.fork();
 }
