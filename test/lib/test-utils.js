@@ -2,8 +2,12 @@ const config = require('./test-config');
 const cluster = require('cluster');
 const { parse, stringify } = require('flatted');
 const should = require('should');
-const LRUCacheForClustersAsPromised = require('../../');
+const LRUCacheForClustersAsPromised = require('../../lru-cache-for-clusters-as-promised');
+const LRUCache = require('lru-cache');
 const member = cluster.isWorker ? 'worker' : 'master';
+
+// create a default
+new LRUCacheForClustersAsPromised();
 
 /**
  * Test class definitions for clusterd and non-clustered environments
@@ -24,6 +28,11 @@ function TestUtils(cache) {
       reject: 'timeout with reject',
     },
     tests: {
+      executeSetGet: 'try to call set via the execute() option',
+      executeFail: 'execute fail',
+      getLruCachesOnMaster:
+        'getLruCaches to return the underlying LRUCaches from master, throw error on worker',
+      getCache: 'get underlying LRUCache for promisified version',
       mSet: 'mSet values',
       mSetNull: 'mSet null pairs',
       mGet: 'mGet values',
@@ -60,9 +69,86 @@ function TestUtils(cache) {
       getMax: 'max()',
       getMaxAge: 'maxAge()',
       getStale: 'stale()',
+      getAllowStale: 'allowStale()',
       setMax: 'max(10)',
       setMaxAge: 'maxAge(10)',
       setStale: 'stale(true)',
+      setAllowStale: 'allowStale(true)',
+      properties: 'update cache properties',
+      getInstance:
+        'get an instance asynchronously, ensures cache has been created on the server',
+    },
+    executeSetGet: async (cb) => {
+      try {
+        await cache.execute('set', 1, 'execute');
+        const value = await cache.execute('get', 1);
+        should(value).equal('execute');
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    executeFail: async (cb) => {
+      try {
+        try {
+          await cache.execute('borked', 1, 'execute');
+        } catch (err) {
+          should(err.message).equal(
+            'LRUCache.borked() is not a valid function'
+          );
+        }
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    getLruCachesOnMaster: async (cb) => {
+      try {
+        try {
+          const yo = 'yo yo yo';
+          // get the default cache and set the value using a promise
+          const defCache = new LRUCacheForClustersAsPromised();
+          await defCache.set(1, yo);
+
+          // get all the caches and check the default namespace
+          const caches = LRUCacheForClustersAsPromised.getAllCaches();
+          should(typeof caches.default).not.equal('undefined');
+          should(caches.default instanceof LRUCache).equal(true);
+          should(caches.default.allowStale).equal(false);
+          should(caches.default.maxAge).equal(0);
+
+          // get the value we set synchronously
+          const value = caches.default.get(1);
+          should(value).equal(yo);
+        } catch (err) {
+          if (!cluster.isWorker) {
+            throw err;
+          }
+          should(err.message).containEql('LRUCacheForClustersAsPromised');
+        }
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    getCache: async (cb) => {
+      try {
+        try {
+          const foo = 'foo foo foo';
+          const defCache = new LRUCacheForClustersAsPromised();
+          await defCache.set(1, foo);
+
+          const cache = defCache.getCache();
+          should(cache.get(1)).equal(foo);
+        } catch (err) {
+          if (!cluster.isWorker) {
+            throw err;
+          }
+        }
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
     },
     mSet: async (cb) => {
       try {
@@ -491,7 +577,16 @@ function TestUtils(cache) {
     getStale: async (cb) => {
       try {
         const stale = await cache.stale();
-        should(typeof stale).equal('undefined');
+        should(stale).equal(false);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    getAllowStale: async (cb) => {
+      try {
+        const stale = await cache.allowStale();
+        should(stale).equal(false);
         cb(null, true);
       } catch (err) {
         cb(err);
@@ -519,6 +614,83 @@ function TestUtils(cache) {
       try {
         const stale = await cache.stale(true);
         should(stale).equal(true);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    setAllowStale: async (cb) => {
+      try {
+        const stale = await cache.allowStale(true);
+        should(stale).equal(true);
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    properties: async (cb) => {
+      try {
+        const propsCache = new LRUCacheForClustersAsPromised({
+          namespace: 'props-cache',
+          max: 1,
+          maxAge: 100000,
+          stale: true,
+        });
+        should(await propsCache.allowStale()).equal(true);
+        should(await propsCache.max()).equal(1);
+        should(await propsCache.maxAge()).equal(100000);
+
+        const propsCache2 = new LRUCacheForClustersAsPromised({
+          namespace: 'props-cache',
+          max: 10101,
+          stale: false,
+        });
+        should(await propsCache2.allowStale()).equal(false);
+        should(await propsCache2.max()).equal(10101);
+        should(await propsCache2.maxAge()).equal(100000);
+
+        const propsCache3 = new LRUCacheForClustersAsPromised({
+          namespace: 'props-cache',
+          maxAge: 1000,
+        });
+        should(await propsCache3.allowStale()).equal(false);
+        should(await propsCache3.max()).equal(10101);
+        should(await propsCache3.maxAge()).equal(1000);
+
+        cb(null, true);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    getInstance: async (cb) => {
+      try {
+        const propsCache = await LRUCacheForClustersAsPromised.getInstance({
+          namespace: 'props-cache',
+          max: 1,
+          maxAge: 100000,
+          stale: true,
+        });
+        should(await propsCache.allowStale()).equal(true);
+        should(await propsCache.max()).equal(1);
+        should(await propsCache.maxAge()).equal(100000);
+
+        const propsCache2 = await LRUCacheForClustersAsPromised.getInstance({
+          namespace: 'props-cache',
+          max: 10101,
+          stale: false,
+        });
+        should(await propsCache2.allowStale()).equal(false);
+        should(await propsCache2.max()).equal(10101);
+        should(await propsCache2.maxAge()).equal(100000);
+
+        const propsCache3 = await LRUCacheForClustersAsPromised.getInstance({
+          namespace: 'props-cache',
+          maxAge: 1000,
+        });
+        should(await propsCache3.allowStale()).equal(false);
+        should(await propsCache3.max()).equal(10101);
+        should(await propsCache3.maxAge()).equal(1000);
+
         cb(null, true);
       } catch (err) {
         cb(err);

@@ -44,19 +44,45 @@ class LRUCacheForClustersAsPromised {
     );
   }
 
-  set(key, value, maxAge) {
+  static async getInstance(options) {
+    const lru = new LRUCacheForClustersAsPromised({ ...options, noInit: true });
+    if (cluster.isWorker) {
+      await lru.promisify('()', options);
+    }
+    return lru;
+  }
+
+  static getAllCaches() {
+    if (cluster.isWorker) {
+      throw new Error(
+        'LRUCacheForClustersAsPromised.getAllCaches() should only be called from the master thread.'
+      );
+    }
+    return master.caches;
+  }
+
+  getCache() {
+    const caches = LRUCacheForClustersAsPromised.getAllCaches();
+    return caches[this.namespace];
+  }
+
+  async execute(command, ...args) {
+    return this.promisify(command, ...args);
+  }
+
+  async set(key, value, maxAge) {
     return this.promisify('set', key, value, maxAge);
   }
 
-  get(key) {
+  async get(key) {
     return this.promisify('get', key);
   }
 
-  setObject(key, value, maxAge) {
+  async setObject(key, value, maxAge) {
     return this.promisify('set', key, this.stringify(value), maxAge);
   }
 
-  getObject(key) {
+  async getObject(key) {
     return this.promisify('get', key).then((value) =>
       Promise.resolve(
         // eslint-disable-next-line no-undefined
@@ -65,19 +91,19 @@ class LRUCacheForClustersAsPromised {
     );
   }
 
-  del(key) {
+  async del(key) {
     return this.promisify('del', key);
   }
 
-  mGet(keys) {
+  async mGet(keys) {
     return this.promisify('mGet', keys);
   }
 
-  mSet(pairs, maxAge) {
+  async mSet(pairs, maxAge) {
     return this.promisify('mSet', pairs, maxAge);
   }
 
-  mGetObjects(keys) {
+  async mGetObjects(keys) {
     return this.promisify('mGet', keys).then((pairs) => {
       const objs = {};
       return utils
@@ -86,70 +112,77 @@ class LRUCacheForClustersAsPromised {
     });
   }
 
-  mSetObjects(pairs, maxAge) {
+  async mSetObjects(pairs, maxAge) {
     const objs = {};
     return utils
       .mapObjects(pairs, objs, this.stringify)
       .then(() => this.promisify('mSet', objs, maxAge));
   }
 
-  mDel(keys) {
+  async mDel(keys) {
     return this.promisify('mDel', keys);
   }
 
-  peek(key) {
+  async peek(key) {
     return this.promisify('peek', key);
   }
 
-  has(key) {
+  async has(key) {
     return this.promisify('has', key);
   }
 
-  incr(key, amount) {
+  async incr(key, amount) {
     return this.promisify('incr', key, amount);
   }
 
-  decr(key, amount) {
+  async decr(key, amount) {
     return this.promisify('decr', key, amount);
   }
 
-  reset() {
+  async reset() {
     return this.promisify('reset');
   }
 
-  keys() {
+  async keys() {
     return this.promisify('keys');
   }
 
-  values() {
+  async values() {
     return this.promisify('values');
   }
 
-  dump() {
+  async dump() {
     return this.promisify('dump');
   }
 
-  prune() {
+  async prune() {
     return this.promisify('prune');
   }
 
-  length() {
+  async length() {
     return this.promisify('length');
   }
 
-  itemCount() {
+  async itemCount() {
     return this.promisify('itemCount');
   }
 
-  stale(stale) {
-    return this.promisify('stale', stale);
+  /**
+   * @deprecated use allowStale(stale)
+   */
+  async stale(stale) {
+    return this.allowStale(stale);
   }
 
-  max(max) {
+  async allowStale(stale) {
+    return this.promisify('allowStale', stale);
+  }
+
+  async max(max) {
     return this.promisify('max', max);
   }
 
-  maxAge(maxAge) {
+  async maxAge(maxAge) {
     return this.promisify('maxAge', maxAge);
   }
 }

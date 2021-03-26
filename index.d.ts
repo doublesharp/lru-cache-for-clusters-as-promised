@@ -1,11 +1,49 @@
+import LRUCache from "lru-cache";
+
 // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#lru-cache-for-clusters-as-promised
 declare module "lru-cache-for-clusters-as-promised" {
+
+    interface LRUCaches {
+        [key: string]: LRUCache
+    }
+
+    // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#options
+    interface cacheConstructorParam {
+        // The namespace for this cache on the master thread as it is not aware of the worker instances.
+        namespace?: string,
+        // The amount of time in milliseconds that a worker will wait for a response from the master before rejecting the Promise.
+        timeout?: number,
+        // When a request times out the Promise will return resolve(undefined) by default, or with a value of reject the return will be reject(Error)
+        failsafe?: "resolve" | "reject",
+        // The maximum items that can be stored in the cache
+        max?: number,
+        // The maximum age for an item to be considered valid
+        maxAge?: number,
+        // When true expired items are return before they are removed rather than undefined
+        stale?: boolean,
+        // Use a cron job on the master thread to call prune() on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds. Also works in single threaded environments not using the cluster module.
+        prune?: false | string,
+        // custom stringify function
+        stringify?: function,
+        // custom parse function
+        parse?: function,
+    }
 
     // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#example-usage
     class Cache <G1 = never, G2 = never, G3 = never, G4 = never> {
         constructor(options?: cacheConstructorParam);
 
+        // Call from the master to ensure that the listeners are enabled
         static init(): void
+        
+        // Called from the master to fetch unerlying LRUCaches keyed by namespace
+        static getLruCaches(): LRUCaches
+
+        // Load an instance asynchronously to ensure that the cache has been created on the master.
+        static getInstance(): Promise<Cache>
+
+        // Execute arbitrary command (function) on the cache.
+        execute(command: string, ...args: any[]): Promise<any>
 
         // Sets a value for a key. Specifying the maxAge will cause the value to expire per the stale value or when pruned.
         set(key: string, value: G1 | G2 | G3 | G4, maxAge?: number): Promise<void>
@@ -82,33 +120,24 @@ declare module "lru-cache-for-clusters-as-promised" {
         // Get or update the maxAge value for the cache.
         maxAge(maxAge: number): Promise<void>
 
-        // Get or update the stale value for the cache.
+        /**
+         * Get or update the stale value for the cache.
+         * @deprecated please use allowStale()
+         */
         stale(): Promise<boolean>
 
-        // Get or update the stale value for the cache.
+        /**
+         * Get or update the stale value for the cache.
+         * @param stale 
+         * @deprecated please use allowStale(stale)
+         */
         stale(stale: boolean): Promise<void>
-    }
+        
+        // Get or update the stale value for the cache.
+        allowStale(): Promise<boolean>
 
-    // https://github.com/doublesharp/lru-cache-for-clusters-as-promised#options
-    interface cacheConstructorParam {
-        // The namespace for this cache on the master thread as it is not aware of the worker instances.
-        namespace?: string,
-        // The amount of time in milliseconds that a worker will wait for a response from the master before rejecting the Promise.
-        timeout?: number,
-        // When a request times out the Promise will return resolve(undefined) by default, or with a value of reject the return will be reject(Error)
-        failsafe?: "resolve" | "reject",
-        // The maximum items that can be stored in the cache
-        max?: number,
-        // The maximum age for an item to be considered valid
-        maxAge?: number,
-        // When true expired items are return before they are removed rather than undefined
-        stale?: boolean,
-        // Use a cron job on the master thread to call prune() on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds. Also works in single threaded environments not using the cluster module.
-        prune?: false | string,
-        // custom stringify function
-        stringify?: function,
-        // custom parse function
-        parse?: function,
+        // Get or update the stale value for the cache.
+        allowStale(stale: boolean): Promise<void>
     }
 
     module Cache {

@@ -92,8 +92,10 @@ yarn add lru-cache-for-clusters-as-promised
   * Get or update the `max` value for the cache.
 * `maxAge([maxAge])`
   * Get or update the `maxAge` value for the cache.
-* `stale([true|false])`
-  * Get or update the `stale` value for the cache.
+* `allowStale([true|false])`
+  * Get or update the `allowStale` value for the cache (set via `stale` in options). The `stale()` method is deprecated.
+* `execute(command, [arg1, arg2, ...])`
+  * Execute arbitrary command (`LRUCache` function) on the cache, returns whatever value was returned.
 
 # example usage
 **Master**

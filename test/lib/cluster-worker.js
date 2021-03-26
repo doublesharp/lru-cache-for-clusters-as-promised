@@ -1,7 +1,7 @@
 const config = require('./test-config');
 const express = require('express');
 const http = require('http');
-const LRUCache = require('../../');
+const LRUCache = require('../../lru-cache-for-clusters-as-promised');
 const TestUtils = require('./test-utils');
 
 // this will be the SAME cache no matter which module calls it.
@@ -9,13 +9,6 @@ const initCache = new LRUCache();
 initCache.keys();
 
 require('../../lib/worker');
-
-// this will be the SAME cache no matter which module calls it.
-const defaultCache = new LRUCache({
-  max: 1,
-  maxAge: 100000,
-});
-defaultCache.keys();
 
 const cache = new LRUCache({
   namespace: 'test-cache',
@@ -32,7 +25,7 @@ const app = express();
     app.get(`/${method}`, (req, res) => {
       testUtils[method]((err) => {
         if (err) {
-          return res.send(err.message);
+          return res.send({ error: `${err.stack}` });
         }
         return res.send(true);
       });
