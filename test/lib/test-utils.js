@@ -46,6 +46,7 @@ function TestUtils(cache) {
       circular_objects: 'circular objects should be ok',
       miss_undefined: 'missing objects should return undefined',
       pruneJob: 'prune cache using cron job',
+      pruneJob2: 'prune cache using cron job, longer than test',
       set: 'set(key, value)',
       get: 'get(key)',
       del: 'del(key)',
@@ -357,8 +358,8 @@ function TestUtils(cache) {
           prune: '*/1 * * * * *',
         });
 
-        await prunedCache.set(config.args.one, config.args.one);
-        await prunedCache.set(config.args.two, config.args.two, 2000);
+        await prunedCache.set(config.args.one, config.args.one, 500);
+        await prunedCache.set(config.args.two, config.args.two, 1200);
 
         const itemCount = await prunedCache.itemCount();
         // we should see 2 items in the cache
@@ -369,6 +370,30 @@ function TestUtils(cache) {
           const itemCount2 = await prunedCache.itemCount();
           try {
             should(itemCount2).equal(1);
+            return cb(null, true);
+          } catch (err) {
+            return cb(err);
+          }
+        }, 1100);
+      } catch (err) {
+        cb(err);
+      }
+    },
+    pruneJob2: async (cb) => {
+      try {
+        const prunedCache = new LRUCacheForClustersAsPromised({
+          namespace: `pruned-cache-${member}-2`,
+          prune: '*/5 * * * * *',
+        });
+
+        await prunedCache.set(config.args.one, config.args.one, 500);
+        await prunedCache.set(config.args.two, config.args.two, 1100);
+        // check again in 1100 ms
+        setTimeout(async () => {
+          // both items should be there after they are expired
+          const itemCount2 = await prunedCache.itemCount();
+          try {
+            should(itemCount2).equal(2);
             return cb(null, true);
           } catch (err) {
             return cb(err);
@@ -567,8 +592,9 @@ function TestUtils(cache) {
     },
     getMaxAge: async (cb) => {
       try {
+        await cache.maxAge(20);
         const maxAge = await cache.maxAge();
-        should(maxAge).equal(0);
+        should(maxAge).equal(20);
         cb(null, true);
       } catch (err) {
         cb(err);
