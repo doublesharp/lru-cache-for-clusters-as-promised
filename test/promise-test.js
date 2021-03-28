@@ -1,9 +1,9 @@
-const LRUCache = require('../');
+const LRUCacheForClustersAsPromised = require('../lru-cache-for-clusters-as-promised');
 const TestUtils = require('./lib/test-utils');
 const async = require('async');
 
 describe('LRU Cache as Promised', async () => {
-  const cache = new LRUCache({
+  const cache = new LRUCacheForClustersAsPromised({
     namespace: 'lru-cache-as-promised',
     max: 3,
     stale: false,

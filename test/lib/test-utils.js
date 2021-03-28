@@ -350,17 +350,20 @@ function TestUtils(cache) {
     },
     pruneJob: async (cb) => {
       try {
+        const namespace = `pruned-cache-${member}-${Math.random()}`;
         const prunedCache = new LRUCacheForClustersAsPromised({
           max: 10,
           stale: true,
           maxAge: 100,
-          namespace: `pruned-cache-${member}`,
+          namespace,
           prune: '*/1 * * * * *',
         });
 
-        await prunedCache.set(config.args.one, config.args.one, 500);
-        await prunedCache.set(config.args.two, config.args.two, 1200);
+        const now = new Date();
+        const modifier = now.getMilliseconds() > 800 ? 0 : 200;
 
+        await prunedCache.set(config.args.one, config.args.one, 200 + modifier);
+        await prunedCache.set(config.args.two, config.args.two, 1500);
         const itemCount = await prunedCache.itemCount();
         // we should see 2 items in the cache
         should(itemCount).equal(2);
@@ -370,35 +373,58 @@ function TestUtils(cache) {
           const itemCount2 = await prunedCache.itemCount();
           try {
             should(itemCount2).equal(1);
+            new LRUCacheForClustersAsPromised({
+              namespace,
+              prune: false,
+            });
             return cb(null, true);
           } catch (err) {
             return cb(err);
           }
-        }, 1100);
+        }, 1200);
       } catch (err) {
         cb(err);
       }
     },
     pruneJob2: async (cb) => {
       try {
+        const namespace = `pruned-cache-${member}-2-${Math.random()}`;
+        // create it with 1 sec pruning
+        new LRUCacheForClustersAsPromised({
+          namespace,
+          prune: '*/1 * * * * *',
+        });
+        // update it to run every 5 secs
         const prunedCache = new LRUCacheForClustersAsPromised({
-          namespace: `pruned-cache-${member}-2`,
+          namespace,
           prune: '*/5 * * * * *',
         });
 
-        await prunedCache.set(config.args.one, config.args.one, 500);
-        await prunedCache.set(config.args.two, config.args.two, 1100);
+        const now = new Date();
+        const modifier =
+          (now.getSeconds() % 5 <= 4 ? 0 : now.getSeconds() % 5) * 1000;
+
+        await prunedCache.set(config.args.one, config.args.one, 500 + modifier);
+        await prunedCache.set(config.args.two, config.args.two, 1500);
+        const itemCount = await prunedCache.itemCount();
+        // we should see 2 items in the cache
+        should(itemCount).equal(2);
         // check again in 1100 ms
         setTimeout(async () => {
           // both items should be there after they are expired
           const itemCount2 = await prunedCache.itemCount();
           try {
             should(itemCount2).equal(2);
+            // disable prune job
+            await LRUCacheForClustersAsPromised.getInstance({
+              namespace,
+              prune: false,
+            });
             return cb(null, true);
           } catch (err) {
             return cb(err);
           }
-        }, 1100);
+        }, 1200);
       } catch (err) {
         cb(err);
       }
