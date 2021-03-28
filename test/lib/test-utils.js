@@ -15,10 +15,16 @@ new LRUCacheForClustersAsPromised();
  * @return {void} Node style callback
  */
 function TestUtils(cache) {
-  const object = { foo: 'bar' };
+  const object = {
+    foo:
+      'bar barbarbar barbarbar barbarbar barbarbar barbarbar barbarbar barbarbar barbarbar barbar',
+  };
   const pairs = {
     foo: 'bar',
     bizz: 'buzz',
+    obj: {
+      hi: 'im an object',
+    },
   };
   const keys = Object.keys(pairs);
   return {
