@@ -42,6 +42,9 @@ declare module "lru-cache-for-clusters-as-promised" {
         // Load an instance asynchronously to ensure that the cache has been created on the master.
         static getInstance(): Promise<Cache>
 
+        // Get the underlying LRUCache on the master thread (throws exception on worker)
+        getCache(): LRUCache
+
         // Execute arbitrary command (function) on the cache.
         execute(command: string, ...args: any[]): Promise<any>
 
