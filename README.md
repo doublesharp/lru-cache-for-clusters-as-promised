@@ -40,7 +40,11 @@ yarn add lru-cache-for-clusters-as-promised
 * `stale: true|false`
   * When `true` expired items are return before they are removed rather than `undefined`
 * `prune: false|crontime string`, defaults to `false`
-  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds (See [`node-cron` patterns](https://www.npmjs.com/package/cron#available-cron-patterns) for more info). Also works in single threaded environments not using the `cluster` module.
+  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds (See [`node-cron` patterns](https://www.npmjs.com/package/cron#available-cron-patterns) for more info). Also works in single threaded environments not using the `cluster` module. Passing `false` to an existing namespace will disable any jobs that are scheduled.
+* `parse: function`, defaults to `JSON.parse`
+  * Pass in a custom parser function to use for deserializing data sent to/from the cache. This is set on the `LRUCacheForClustersAsPromised` instance and in theory could be different per worker.
+* `stringify: function`, defaults to `JSON.stringify`
+  * Pass in a custom stringifier function to for creating a serializing data sent to/from the cache.
 
 > ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
 
