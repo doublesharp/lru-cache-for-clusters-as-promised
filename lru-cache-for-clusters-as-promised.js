@@ -83,12 +83,9 @@ class LRUCacheForClustersAsPromised {
   }
 
   async getObject(key) {
-    return this.promisify('get', key).then((value) =>
-      Promise.resolve(
-        // eslint-disable-next-line no-undefined
-        value ? this.parse(value) : undefined
-      )
-    );
+    const value = await this.promisify('get', key);
+    // eslint-disable-next-line no-undefined
+    return value ? this.parse(value) : undefined;
   }
 
   async del(key) {
@@ -104,19 +101,16 @@ class LRUCacheForClustersAsPromised {
   }
 
   async mGetObjects(keys) {
-    return this.promisify('mGet', keys).then((pairs) => {
-      const objs = {};
-      return utils
-        .mapObjects(pairs, objs, this.parse)
-        .then(() => Promise.resolve(objs));
-    });
+    const pairs = await this.promisify('mGet', keys);
+    const objs = {};
+    await utils.mapObjects(pairs, objs, this.parse, zlib.gunzipSync);
+    return objs;
   }
 
   async mSetObjects(pairs, maxAge) {
     const objs = {};
-    return utils
-      .mapObjects(pairs, objs, this.stringify)
-      .then(() => this.promisify('mSet', objs, maxAge));
+    await utils.mapObjects(pairs, objs, this.stringify, zlib.gzipSync);
+    return this.promisify('mSet', objs, maxAge);
   }
 
   async mDel(keys) {

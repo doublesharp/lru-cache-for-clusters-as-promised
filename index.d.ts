@@ -40,107 +40,107 @@ declare module "lru-cache-for-clusters-as-promised" {
         static getLruCaches(): LRUCaches
 
         // Load an instance asynchronously to ensure that the cache has been created on the master.
-        static getInstance(): Promise<Cache>
+        static async getInstance(): Promise<Cache>
 
         // Get the underlying LRUCache on the master thread (throws exception on worker)
         getCache(): LRUCache
 
         // Execute arbitrary command (function) on the cache.
-        execute(command: string, ...args: any[]): Promise<any>
+        async execute(command: string, ...args: any[]): Promise<any>
 
         // Sets a value for a key. Specifying the maxAge will cause the value to expire per the stale value or when pruned.
-        set(key: string, value: G1 | G2 | G3 | G4, maxAge?: number): Promise<void>
+        async set(key: string, value: G1 | G2 | G3 | G4, maxAge?: number): Promise<void>
 
         // Sets a value for a key. Specifying the maxAge will cause the value to expire per the stale value or when pruned.
-        setObject(key: string, object: Object, maxAge?: number): Promise<void>
+        async setObject(key: string, object: Object, maxAge?: number): Promise<void>
 
         // Sets multiple key-value pairs in the cache at one time.
-        mSet(keys: { [index: string]: string | number }, maxAge?: number): Promise<void>
+        async mSet(keys: { [index: string]: string | number }, maxAge?: number): Promise<void>
 
         // Sets multiple key-value pairs in the cache at one time, where the value is an object.
-        mSetObjects(keys: { [index: string]: G1 | G2 | G3 | G4 }, maxAge?: number): Promise<void>
+        async mSetObjects(keys: { [index: string]: G1 | G2 | G3 | G4 }, maxAge?: number): Promise<void>
 
         // Returns a value for a key.
-        get(key: string): Promise<G1 | G2 | G3 | G4 | string | number>
+        async get(key: string): Promise<G1 | G2 | G3 | G4 | string | number>
 
         // Returns a value for a key.
-        getObject(key: string): Promise<Object>
+        async getObject(key: string): Promise<Object>
 
         // Returns values for multiple keys, results are in the form of { key1: '1', key2: '2' }.
-        mGet(keys: Array<string>): Promise<{ [index: string]: string | number }>
+        async mGet(keys: Array<string>): Promise<{ [index: string]: string | number }>
 
         // Returns values as objects for multiple keys, results are in the form of { key1: '1', key2: '2' }.
-        mGetObjects(keys: Array<string>): Promise<{ [index: string]: G1 | G2 | G3 | G4 | string | number}>
+        async mGetObjects(keys: Array<string>): Promise<{ [index: string]: G1 | G2 | G3 | G4 | string | number}>
 
         // Returns the value for a key without updating its last access time.
-        peek(key: string): Promise< G1 | G2 | G3 | G4 | string | number>
+        async peek(key: string): Promise< G1 | G2 | G3 | G4 | string | number>
 
         // Removes a value from the cache.
-        del(key: string): Promise<void>
+        async del(key: string): Promise<void>
 
         // Removes multiple keys from the cache..
-        mDel(keys: Array<string>): Promise<void>
+        async mDel(keys: Array<string>): Promise<void>
 
         // Returns true if the key exists in the cache.
-        has(key: string): Promise<boolean>
+        async has(key: string): Promise<boolean>
 
         // Increments a numeric key value by the amount, which defaults to 1. More atomic in a clustered environment.
-        incr(key: string, amount?: number): Promise<void>
+        async incr(key: string, amount?: number): Promise<void>
 
         // Decrements a numeric key value by the amount, which defaults to 1. More atomic in a clustered environment.
-        decr(key: string, amount?: number): Promise<void>
+        async decr(key: string, amount?: number): Promise<void>
 
         // Removes all values from the cache.
-        reset(): Promise<void>
+        async reset(): Promise<void>
 
         // Returns an array of all the cache keys.
-        keys(): Promise<Array<string>>
+        async keys(): Promise<Array<string>>
 
         // Returns an array of all the cache values.
-        values(): Promise<Array< G1 | G2 | G3 | G4 | string | number>>
+        async values(): Promise<Array< G1 | G2 | G3 | G4 | string | number>>
 
         // Returns a serialized array of the cache contents.
-        dump(): Promise<Array<string>>
+        async dump(): Promise<Array<string>>
 
         // Manually removes items from the cache rather than on get.
-        prune(): Promise<void>
+        async prune(): Promise<void>
 
         // Return the number of items in the cache.
-        length(): Promise<number>
+        async length(): Promise<number>
 
         // Return the number of items in the cache - same as length().
-        itemCount(): Promise<number>
+        async itemCount(): Promise<number>
 
         // Get or update the max value for the cache.
-        max(): Promise<number>
+        async max(): Promise<number>
 
         // Get or update the maxAge value for the cache.
-        max(max: number): Promise<void>
+        async max(max: number): Promise<void>
 
         // Get or update the maxAge value for the cache.
-        maxAge(): Promise<number>
+        async maxAge(): Promise<number>
 
         // Get or update the maxAge value for the cache.
-        maxAge(maxAge: number): Promise<void>
+        async maxAge(maxAge: number): Promise<void>
 
         /**
          * Get or update the stale value for the cache.
          * @deprecated please use allowStale()
          */
-        stale(): Promise<boolean>
+        async stale(): Promise<boolean>
 
         /**
          * Get or update the stale value for the cache.
          * @param stale 
          * @deprecated please use allowStale(stale)
          */
-        stale(stale: boolean): Promise<void>
+        async stale(stale: boolean): Promise<void>
         
         // Get or update the stale value for the cache.
-        allowStale(): Promise<boolean>
+        async allowStale(): Promise<boolean>
 
         // Get or update the stale value for the cache.
-        allowStale(stale: boolean): Promise<void>
+        async allowStale(stale: boolean): Promise<void>
     }
 
     module Cache {

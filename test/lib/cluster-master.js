@@ -72,11 +72,12 @@ module.exports = (done) => {
     });
   });
   return {
-    accessSharedFromMaster: (done2) => {
+    accessSharedFromMaster: async (done2) => {
       const cache = new LRUCache({
         namespace: 'test-cache',
       });
-      cache.keys().then(() => done2());
+      await cache.keys();
+      return done2();
     },
     getCacheMax: () => {
       const cache = new LRUCache({
