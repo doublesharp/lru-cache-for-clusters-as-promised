@@ -103,13 +103,13 @@ class LRUCacheForClustersAsPromised {
   async mGetObjects(keys) {
     const pairs = await this.promisify('mGet', keys);
     const objs = {};
-    await utils.mapObjects(pairs, objs, this.parse, zlib.gunzipSync);
+    await utils.mapObjects(pairs, objs, this.parse);
     return objs;
   }
 
   async mSetObjects(pairs, maxAge) {
     const objs = {};
-    await utils.mapObjects(pairs, objs, this.stringify, zlib.gzipSync);
+    await utils.mapObjects(pairs, objs, this.stringify);
     return this.promisify('mSet', objs, maxAge);
   }
 
