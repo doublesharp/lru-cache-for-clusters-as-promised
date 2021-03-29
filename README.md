@@ -124,7 +124,7 @@ require('lru-cache-for-clusters-as-promised').init();
 ```javascript
 // worker code
 const LRUCache = require('lru-cache-for-clusters-as-promised');
-const cache = new LRUCache({
+let cache = new LRUCache({
   namespace: 'users',
   max: 50,
   stale: false,
@@ -132,49 +132,48 @@ const cache = new LRUCache({
   failsafe: 'resolve',
 });
 
-// async cache
-(async function() {
-  const options = { /* ...options */ };
-  const cache = await LRUCache.getInstance(options);
-}());
-
 const user = { name: 'user name' };
 const key = 'userKey';
 
-// set a user for a the key
-cache.set(key, user)
-.then(() => {
+// using async/await
+(async function() {  
+  // get cache instance asynchronously. this will always be the same underlying cache
+  cache = await LRUCache.getInstance({ /* ...options */ });
+
+  // set a user for a the key
+  await cache.set(key, user);
   console.log('set the user to the cache');
 
-  // get the same user back out of the cache
-  return cache.get(key);
-})
-.then((cachedUser) => {
+    // get the same user back out of the cache
+  const cachedUser = await cache.get(key);
   console.log('got the user from cache', cachedUser);
 
   // check the number of users in the cache
-  return cache.length();
-})
-.then((size) => {
+  const size = await cache.length();
   console.log('user cache size/length', size);
 
   // remove all the items from the cache
-  return cache.reset();
-})
-.then(() => {
+  await cache.reset();
   console.log('the user cache is empty');
 
   // return user count, this will return the same value as calling length()
-  return cache.itemCount();
-})
-.then((size) => {
-  console.log('user cache size/itemCount', size);
-});
+  const itemCount = await cache.itemCount();
+  console.log('user cache size/itemCount', itemCount);
+}());
+
+// using thenables
+LRUCache.getInstance({ /* ...options */ })
+.then((myCache) => 
+  myCache.set(key, user)
+  .then(() => 
+    myCache.get(key)
+  )
+)
 ```
 
 Use a custom object parser for the cache to handle cases like circular object references that `JSON.parse()` and `JSON.stringify()` cannot, or use custom revivers, etc.
 
-```
+```javascript
 const flatted = require('flatted');
 const LRUCache = require('lru-cache-for-clusters-as-promised');
 
