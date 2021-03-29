@@ -1,4 +1,5 @@
 module.exports = {
+  timeout: 5000,
   args: {
     one: 'one',
     two: 'two',

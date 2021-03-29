@@ -30,7 +30,8 @@ describe('LRU Cache for Clusters', () => {
 
   ['tests', 'clusterTests'].forEach((test) => {
     Object.keys(testUtils[test]).forEach((method) => {
-      it(`should ${testUtils[test][method]}`, (done) => {
+      it(`should ${testUtils[test][method]}`, function (done) {
+        this.timeout(config.timeout);
         // run the request
         request(`http://${config.server.host}:${config.server.port}`)
           .get(`/${method}`)
@@ -41,7 +42,7 @@ describe('LRU Cache for Clusters', () => {
             }
             return response.body === true
               ? done()
-              : done(new Error(response.body));
+              : done(new Error(response.body.error));
           });
       });
     });

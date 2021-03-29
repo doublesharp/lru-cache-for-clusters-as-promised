@@ -1,8 +1,10 @@
-const LRUCache = require('../');
+const async = require('async');
+const LRUCacheForClustersAsPromised = require('../lru-cache-for-clusters-as-promised');
 const TestUtils = require('./lib/test-utils');
+const config = require('./lib/test-config');
 
-describe('LRU Cache as Promised', () => {
-  const cache = new LRUCache({
+describe('LRU Cache as Promised', async () => {
+  const cache = new LRUCacheForClustersAsPromised({
     namespace: 'lru-cache-as-promised',
     max: 3,
     stale: false,
@@ -10,19 +12,24 @@ describe('LRU Cache as Promised', () => {
 
   const testUtils = new TestUtils(cache);
 
+  before(function () {
+    this.timeout(5000);
+  });
+
   afterEach((done) => {
     testUtils.reset(done);
   });
 
-  ['tests'].forEach((test) => {
-    Object.keys(testUtils[test]).forEach((method) => {
-      it(`should ${testUtils[test][method]}`, (done) => {
+  await async.eachOf(Object.keys(testUtils.tests), async (method) => {
+    return new Promise((resolve, reject) => {
+      it(`should ${testUtils.tests[method]}`, function () {
+        this.timeout(config.timeout);
         // run the request
         testUtils[method]((err) => {
           if (err) {
-            return done(err);
+            return reject(err);
           }
-          return done();
+          return resolve();
         });
       });
     });

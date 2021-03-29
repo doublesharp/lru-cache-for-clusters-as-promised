@@ -40,60 +40,79 @@ yarn add lru-cache-for-clusters-as-promised
 * `stale: true|false`
   * When `true` expired items are return before they are removed rather than `undefined`
 * `prune: false|crontime string`, defaults to `false`
-  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds (See [`node-cron` patterns](https://www.npmjs.com/package/cron#available-cron-patterns) for more info). Also works in single threaded environments not using the `cluster` module.
+  * Use a cron job on the master thread to call `prune()` on your cache at regular intervals specified in "crontime", for example "*/30 * * * * *" would prune the cache every 30 seconds (See [`node-cron` patterns](https://www.npmjs.com/package/cron#available-cron-patterns) for more info). Also works in single threaded environments not using the `cluster` module. Passing `false` to an existing namespace will disable any jobs that are scheduled.
+* `parse: function`, defaults to `JSON.parse`
+  * Pass in a custom parser function to use for deserializing data sent to/from the cache. This is set on the `LRUCacheForClustersAsPromised` instance and in theory could be different per worker.
+* `stringify: function`, defaults to `JSON.stringify`
+  * Pass in a custom stringifier function to for creating a serializing data sent to/from the cache.
 
 > ! note that `length` and `dispose` are missing as it is not possible to pass `functions` via IPC messages.
 
 # api
 
-* `set(key, value, maxAge)`
+## static functions
+
+* `init(): void`
+  * Should be called when `cluster.isMaster === true` to initialize the caches. 
+* `getInstance(options): Promise<LRUCacheForClustersAsPromised>`
+  * Asynchronously returns an `LRUCacheForClustersAsPromised` instance once the underlying `LRUCache` is guaranteed to exist. Uses the same `options` you would pass to the constructor. When constructed synchronously other methods will ensure the underlying cache is created, but this method can be useful from the worker when you plan to interact with the caches directly. Note that this will slow down the construction time on the worker by a few milliseconds while the cache creation is confirmed.
+* `getAllCaches(): { key : LRUCache }`
+  * Synchronously returns a dictionary of the underlying `LRUCache` caches keyed by namespace. Accessible only when `cluster.isMaster === true`, otherwise throws an exception.
+
+## instance functions
+
+* `getCache(): LRUCache`
+  * Gets the underlying `LRUCache`. Accessible only when `cluster.isMaster === true`, otherwise throws an exception.
+* `set(key, value, maxAge): Promise<void>`
   * Sets a value for a key. Specifying the `maxAge` will cause the value to expire per the `stale` value or when `prune`d.
-* `setObject(key, object, maxAge)`
+* `setObject async (key, object, maxAge): Promise<void>`
   * Sets a cache value where the value is an object. Passes the values through `cache.stringify()`, which defaults to `JSON.stringify()`. Use a custom parser like [`flatted`](https://www.npmjs.com/package/flatted) to cases like circular object references.
-* `mSet({ key1: 1, key2: 2, ...}, maxAge)`
+* `mSet({ key1: 1, key2: 2, ...}, maxAge): Promise<void>`
   * Sets multiple key-value pairs in the cache at one time.
-* `mSetObjects({ key1: { obj: 1 }, key2: { obj: 2 }, ...}, maxAge)`
+* `mSetObjects({ key1: { obj: 1 }, key2: { obj: 2 }, ...}, maxAge): Promise<void>`
   * Sets multiple key-value pairs in the cache at one time, where the value is an object. Passes the values through `cache.stringify()`, see `cache.setObject()`;
-* `get(key)`
+* `get(key): Promise<string | number | null | undefined>`
   * Returns a value for a key.
-* `getObject(key)`
+* `getObject(key): Promise<Object | null | undefined>`
   * Returns an object value for a key. Passes the values through `cache.parse()`, which defaults to `JSON.parse()`. Use a custom parser like [`flatted`](https://www.npmjs.com/package/flatted) to cases like circular object references.
-* `mGet([key1, key2, ...])`
+* `mGet([key1, key2, ...]): Promise<{key:string | number | null | undefined}?>`
   * Returns values for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`.
-* `mGetObjects([key1, key2, ...])`
+* `mGetObjects([key1, key2, ...]): Promise<{key:Object | null | undefined}?>`
   * Returns values as objects for multiple keys, results are in the form of `{ key1: '1', key2: '2' }`. Passes the values through `cache.parse()`, see `cache.getObject()`.
-* `peek(key)`
+* `peek(key): Promise<string | number | null | undefined>`
   * Returns the value for a key without updating its last access time.
-* `del(key)`
+* `del(key): Promise<void>`
   * Removes a value from the cache.
-* `mDel([key1, key2...])`
+* `mDel([key1, key2...]): Promise<void>`
   * Removes multiple keys from the cache..
-* `has(key)`
+* `has(key): Promise<boolean>`
   * Returns true if the key exists in the cache.
-* `incr(key, [amount])`
+* `incr(key, [amount]): Promise<number>`
   * Increments a numeric key value by the `amount`, which defaults to `1`. More atomic in a clustered environment.
-* `decr(key, [amount])`
+* `decr(key, [amount]): Promise<number>`
   * Decrements a numeric key value by the `amount`, which defaults to `1`. More atomic in a clustered environment.
-* `reset()`
+* `reset(): Promise<void>`
   * Removes all values from the cache.
-* `keys()`
+* `keys(): Promise<Array<string>>`
   * Returns an array of all the cache keys.
-* `values()`
+* `values(): Promise<Array<string | number>>`
   * Returns an array of all the cache values.
 * `dump()`
   * Returns a serialized array of the cache contents.
-* `prune()`
+* `prune(): Promise<void>`
   * Manually removes items from the cache rather than on get.
-* `length()`
+* `length(): Promise<number>`
   * Return the number of items in the cache.
-* `itemCount()`
+* `itemCount(): Promise<number>`
   * Return the number of items in the cache - same as `length()`.
-* `max([max])`
+* `max([max]): Promise<number | void>`
   * Get or update the `max` value for the cache.
-* `maxAge([maxAge])`
+* `maxAge([maxAge]): Promise<number | void>`
   * Get or update the `maxAge` value for the cache.
-* `stale([true|false])`
-  * Get or update the `stale` value for the cache.
+* `allowStale([true|false]): Promise<boolean | void>`
+  * Get or update the `allowStale` value for the cache (set via `stale` in options). The `stale()` method is deprecated.
+* `execute(command, [arg1, arg2, ...]): Promise<any>`
+  * Execute arbitrary command (`LRUCache` function) on the cache, returns whatever value was returned.
 
 # example usage
 **Master**
