@@ -133,6 +133,12 @@ const cache = new LRUCache({
   failsafe: 'resolve',
 });
 
+// async cache
+(async function() {
+  const options = { /* ...options */ };
+  const cache = await LRUCache.getInstance(options);
+}());
+
 const user = { name: 'user name' };
 const key = 'userKey';
 
