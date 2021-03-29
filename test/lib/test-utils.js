@@ -365,29 +365,32 @@ function TestUtils(cache) {
           prune: '*/1 * * * * *',
         });
 
+        // maybe delay the start to sync with cron
         const now = new Date();
-        const modifier = now.getMilliseconds() > 800 ? 0 : 200;
-
-        await prunedCache.set(config.args.one, config.args.one, 200 + modifier);
-        await prunedCache.set(config.args.two, config.args.two, 1500);
-        const itemCount = await prunedCache.itemCount();
-        // we should see 2 items in the cache
-        should(itemCount).equal(2);
-        // check again in 1100 ms
+        const delay =
+          now.getMilliseconds() < 800 ? 0 : 1000 - now.getMilliseconds() + 10;
         setTimeout(async () => {
-          // one of the items should have been removed based on the expiration
-          const itemCount2 = await prunedCache.itemCount();
-          try {
-            should(itemCount2).equal(1);
-            new LRUCacheForClustersAsPromised({
-              namespace,
-              prune: false,
-            });
-            return cb(null, true);
-          } catch (err) {
-            return cb(err);
-          }
-        }, 1200);
+          await prunedCache.set(config.args.one, config.args.one, 200);
+          await prunedCache.set(config.args.two, config.args.two, 1200);
+          const itemCount = await prunedCache.itemCount();
+          // we should see 2 items in the cache
+          should(itemCount).equal(2);
+          // check again in 1100 ms
+          setTimeout(async () => {
+            // one of the items should have been removed based on the expiration
+            const itemCount2 = await prunedCache.itemCount();
+            try {
+              should(itemCount2).equal(1);
+              new LRUCacheForClustersAsPromised({
+                namespace,
+                prune: false,
+              });
+              return cb(null, true);
+            } catch (err) {
+              return cb(err);
+            }
+          }, 1100);
+        }, delay);
       } catch (err) {
         cb(err);
       }
@@ -400,37 +403,39 @@ function TestUtils(cache) {
           namespace,
           prune: '*/1 * * * * *',
         });
-        // update it to run every 5 secs
+        // update it to run every 10 secs
         const prunedCache = new LRUCacheForClustersAsPromised({
           namespace,
           prune: '*/5 * * * * *',
         });
 
+        // maybe delay the start to sync with cron
         const now = new Date();
-        const modifier =
-          (now.getSeconds() % 5 <= 4 ? 0 : now.getSeconds() % 5) * 1000;
-
-        await prunedCache.set(config.args.one, config.args.one, 500 + modifier);
-        await prunedCache.set(config.args.two, config.args.two, 1500);
-        const itemCount = await prunedCache.itemCount();
-        // we should see 2 items in the cache
-        should(itemCount).equal(2);
-        // check again in 1100 ms
+        const delay =
+          now.getSeconds() % 5 < 4 ? 0 : 1000 - now.getMilliseconds() + 10;
         setTimeout(async () => {
-          // both items should be there after they are expired
-          const itemCount2 = await prunedCache.itemCount();
-          try {
-            should(itemCount2).equal(2);
-            // disable prune job
-            await LRUCacheForClustersAsPromised.getInstance({
-              namespace,
-              prune: false,
-            });
-            return cb(null, true);
-          } catch (err) {
-            return cb(err);
-          }
-        }, 1200);
+          await prunedCache.set(config.args.one, config.args.one, 200);
+          await prunedCache.set(config.args.two, config.args.two, 1200);
+          const itemCount = await prunedCache.itemCount();
+          // we should see 2 items in the cache
+          should(itemCount).equal(2);
+          // check again in 1100 ms
+          setTimeout(async () => {
+            // both items should be there after they are expired
+            const itemCount2 = await prunedCache.itemCount();
+            try {
+              should(itemCount2).equal(2);
+              // disable prune job
+              await LRUCacheForClustersAsPromised.getInstance({
+                namespace,
+                prune: false,
+              });
+              return cb(null, true);
+            } catch (err) {
+              return cb(err);
+            }
+          }, 1000);
+        }, delay);
       } catch (err) {
         cb(err);
       }

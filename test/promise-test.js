@@ -1,6 +1,7 @@
+const async = require('async');
 const LRUCacheForClustersAsPromised = require('../lru-cache-for-clusters-as-promised');
 const TestUtils = require('./lib/test-utils');
-const async = require('async');
+const config = require('./lib/test-config');
 
 describe('LRU Cache as Promised', async () => {
   const cache = new LRUCacheForClustersAsPromised({
@@ -21,7 +22,8 @@ describe('LRU Cache as Promised', async () => {
 
   await async.eachOf(Object.keys(testUtils.tests), async (method) => {
     return new Promise((resolve, reject) => {
-      it(`should ${testUtils.tests[method]}`, () => {
+      it(`should ${testUtils.tests[method]}`, function () {
+        this.timeout(config.timeout);
         // run the request
         testUtils[method]((err) => {
           if (err) {
