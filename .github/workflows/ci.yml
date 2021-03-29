@@ -55,8 +55,7 @@ jobs:
 
     - run: npm ci
     - run: |
-      COVERAGE_ALL=$(npm run coverage-report | grep "All files" | cut -f 5 -d'|' | xargs)%
-      echo $COVERAGE_ALL
+      COVERAGE_ALL="$(npm run coverage-report | grep "All files" | cut -f 5 -d'|' | xargs)%"
       echo "COVERAGE=$(echo ${COVERAGE_ALL})" >> $GITHUB_ENV
 
       REF=${{ github.ref }}
