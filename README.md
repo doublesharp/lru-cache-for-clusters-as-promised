@@ -124,6 +124,9 @@ require('lru-cache-for-clusters-as-promised').init();
 ```javascript
 // worker code
 const LRUCache = require('lru-cache-for-clusters-as-promised');
+
+// this is safe on the master and workers. if you need to ensure the underlying
+// LRUCache exists use `await getInstance()` to fetch the promisified cache.
 let cache = new LRUCache({
   namespace: 'users',
   max: 50,
