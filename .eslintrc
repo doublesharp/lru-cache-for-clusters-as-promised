@@ -1,6 +1,6 @@
 {
   "parserOptions": {
-    "ecmaVersion": 9
+    "ecmaVersion": 10
   },
   "extends": "eslint:recommended",
   "env": {
