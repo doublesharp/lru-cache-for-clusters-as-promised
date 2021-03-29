@@ -1,3 +1,16 @@
+1.7.1 / 2021-03-25
+==================
+
+  * Added `static getInstance(options)` to asynchronously retun an `LRUCacheForClustersAsPromised` once the underlyig `LRUCache` is guaranteed to exist.
+  * Added `static getAllCaches()` to return all underlying `LRUCache` instances keyed by namespace. *Use only when `cluster.isMaster === true`.*
+  * Added `getCache()` to return underlying `LRUCache` instance. *Use only when `cluster.isMaster === true`.*
+  * Add test coverage via github actions
+  * Bug fixes for namespaces
+  * Bug fixes for prune cron jobs
+  * Refactoring for maintainability
+  * Updated tests
+  * Update dependencies
+  
 1.7.0 / 2021-03-25
 ==================
 
