@@ -9,36 +9,9 @@ const debug = new Debug(`${config.source}-test-cluster-master`);
 LRUCache.init();
 
 // this is the path to the cluster worker that spawns the http server
-const workerPath = path.join(__dirname, 'cluster-worker.js');
-
-// we need to do some special things for coverages
-if (process.env.running_under_istanbul) {
-  // use coverage for forked process
-  // disabled reporting and output for child process
-  // enable pid in child process coverage filename
-  cluster.setupMaster({
-    exec: './node_modules/.bin/istanbul',
-    args: [
-      'cover',
-      '--report',
-      'none',
-      '--print',
-      'none',
-      // '--include-all-sources',
-      // output files will have the workers PID in the filename
-      '--include-pid',
-      workerPath,
-      '--',
-    ]
-      // append any additional command line arguments
-      .concat(process.argv.slice(2)),
-  });
-} else {
-  // normal forking
-  cluster.setupMaster({
-    exec: workerPath,
-  });
-}
+cluster.setupMaster({
+  exec: path.join(__dirname, 'cluster-worker.js'),
+});
 
 // start one worker to handle the threads
 const workers = 1;
