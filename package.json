@@ -1,8 +1,8 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "types": "index.d.ts",
-  "description": "LRU Cache that is safe for clusters",
+  "description": "LRU Cache that is safe for clusters, based on `lru-cache`. Save memory by only caching items on the master thread via a pomisfied interface.",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha ./test -s 0 --exit",
@@ -22,13 +22,16 @@
     "url": "git+https://github.com/doublesharp/lru-cache-for-clusters-as-promised.git"
   },
   "keywords": [
-    "LRU",
+    "lru",
+    "mru",
     "cache",
     "lru-cache",
+    "lru cache",
     "cluster",
     "promise",
     "master",
-    "worker"
+    "worker",
+    "memory"
   ],
   "author": "Justin Silver",
   "license": "MIT",
