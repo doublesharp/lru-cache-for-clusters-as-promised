@@ -1,6 +1,6 @@
 {
   "name": "lru-cache-for-clusters-as-promised",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "types": "index.d.ts",
   "description": "LRU Cache that is safe for clusters, based on `lru-cache`. Save memory by only caching items on the master thread via a pomisfied interface.",
   "main": "./lru-cache-for-clusters-as-promised.js",
@@ -37,24 +37,24 @@
   "license": "MIT",
   "dependencies": {
     "cron": "1.8.2",
-    "debug": "4.3.1",
+    "debug": "4.3.2",
     "lru-cache": "6.0.0",
     "uuid": "8.3.2"
   },
   "devDependencies": {
-    "async": "^3.2.0",
-    "depcheck": "1.4.0",
-    "eslint": "7.24.0",
-    "eslint-plugin-mocha": "8.1.0",
+    "async": "^3.2.1",
+    "depcheck": "1.4.2",
+    "eslint": "7.32.0",
+    "eslint-plugin-mocha": "9.0.0",
     "express": "4.17.1",
-    "flatted": "^3.1.1",
+    "flatted": "^3.2.2",
     "istanbul-cobertura-badger": "1.3.1",
-    "mocha": "8.3.2",
+    "mocha": "9.0.3",
     "nyc": "15.1.0",
     "should": "13.2.3",
     "sloc": "0.2.1",
     "spec-xunit-file": "0.0.1-3",
-    "supertest": "6.1.3"
+    "supertest": "6.1.5"
   },
   "pre-commit": [
     "lint",
