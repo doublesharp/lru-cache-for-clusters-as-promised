@@ -2,7 +2,7 @@
   "name": "lru-cache-for-clusters-as-promised",
   "version": "1.7.3",
   "types": "index.d.ts",
-  "description": "LRU Cache that is safe for clusters, based on `lru-cache`. Save memory by only caching items on the master thread via a pomisfied interface.",
+  "description": "LRU Cache that is safe for clusters, based on `lru-cache`. Save memory by only caching items on the main thread via a promisified interface.",
   "main": "./lru-cache-for-clusters-as-promised.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha ./test -s 0 --exit",
