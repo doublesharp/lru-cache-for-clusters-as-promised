@@ -1,2 +1,6 @@
 # Wait seven days before installing newly published dependency versions.
 minimumReleaseAge: 10080
+
+# tsup still requests esbuild 0.27, which has a Windows dev-server advisory.
+overrides:
+  'tsup>esbuild': 0.28.2

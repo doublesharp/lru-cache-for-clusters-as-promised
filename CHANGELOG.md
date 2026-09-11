@@ -1,5 +1,7 @@
 # 2.1.1 / 2026-09-11
 
+- Override tsup's esbuild dependency to the patched 0.28.2 release, removing the older Windows development-server vulnerability.
+
 - Update eleven direct dependencies within their existing major versions. Enforce a seven-day minimum release age for future pnpm resolution; verify all resolved versions against npm publication timestamps.
 - Treat expired keys as absent in `setIfAbsent()`, `incr()`, and `decr()` even with `allowStale` enabled, so counters start a new TTL window.
 - Preserve local LRU order and TTL on `peek()` and `has()`; `has()` no longer reports a stale local entry as present.
