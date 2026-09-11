@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as setTimer, clearTimeout as clearTimer } from 'node:timers';
 import { LRUCacheClustered } from '../src/index.ts';
+import type { L1Stats } from '../src/l1.ts';
+import { SOURCE } from '../src/messages.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -90,18 +92,24 @@ void test(
     };
 
     try {
-      // B writes initial value
+      await a.send('openLocal', opts);
       await b.send('set', { options: opts, key: 'k', value: 'first' });
-      // A reads - populates A's L1
-      const r1 = await a.send<string>('get', { options: opts, key: 'k' });
-      assert.equal(r1, 'first');
-      // B overwrites
+      const read = () =>
+        a.send<{ value: string; stats: L1Stats }>('readLocal', { namespace: opts.namespace, key: 'k' });
+      assert.equal((await read()).value, 'first');
+      const warm = await read();
+      assert.equal(warm.value, 'first');
+      assert.equal(warm.stats.hits, 1, 'verify the same L1 is actually warm');
+      assert.equal(warm.stats.size, 1);
+
       await b.send('set', { options: opts, key: 'k', value: 'second' });
-      // Allow broadcast to propagate (one event-loop tick + IPC roundtrip).
-      await new Promise((r) => setTimeout(r, 100));
-      // A re-reads - L1 should have been invalidated, so this hits primary.
-      const r2 = await a.send<string>('get', { options: opts, key: 'k' });
-      assert.equal(r2, 'second');
+      const invalidated = await a.send<L1Stats>('statsLocal', { namespace: opts.namespace });
+      assert.equal(invalidated.size, 0);
+      assert.equal(invalidated.invalidations, warm.stats.invalidations + 1);
+      const fresh = await read();
+      assert.equal(fresh.value, 'second');
+      assert.equal(fresh.stats.hits, warm.stats.hits, 'the first read after invalidation misses L1');
+      assert.equal((await read()).stats.hits, warm.stats.hits + 1);
     } finally {
       await Promise.all([a.stop(), b.stop()]);
     }
@@ -150,7 +158,8 @@ void test('worker destroy unsubscribes IPC L1 invalidations', { timeout: 15_000 
 
 void test('incr from N workers: final count correct, no L1 race', { timeout: 15_000 }, async () => {
   // Pre-create the namespace on primary so workers can find it.
-  new LRUCacheClustered({ namespace: 'l1-incr', max: 10 });
+  const primaryCache = new LRUCacheClustered<string, number>({ namespace: 'l1-incr', max: 10 });
+  await primaryCache.set('counter', 0);
   setupHarness();
 
   const N = 4;
@@ -158,14 +167,28 @@ void test('incr from N workers: final count correct, no L1 race', { timeout: 15_
   const opts = { namespace: 'l1-incr', max: 10, localL1: { enabled: true, experimental: true, ttl: 1_000 } };
 
   try {
+    for (const worker of workers) {
+      await worker.send('openLocal', opts);
+      const read = { namespace: opts.namespace, key: 'counter' };
+      await worker.send('readLocal', read);
+      const warm = await worker.send<{ value: number; stats: L1Stats }>('readLocal', read);
+      assert.equal(warm.value, 0);
+      assert.equal(warm.stats.hits, 1);
+    }
     const PER = 50;
     await Promise.all(workers.map((w) => w.send('incrMany', { options: opts, key: 'counter', count: PER })));
-    // Allow any in-flight broadcasts to drain.
-    await new Promise((r) => setTimeout(r, 100));
     // Read the final counter through the primary, bypassing all L1.
-    const primaryCache = new LRUCacheClustered<string, number>({ namespace: 'l1-incr' });
     const final = await primaryCache.get('counter', { bypassL1: true });
     assert.equal(final, N * PER);
+    for (const worker of workers) {
+      const result = await worker.send<{ value: number; stats: L1Stats }>('readLocal', {
+        namespace: opts.namespace,
+        key: 'counter',
+      });
+      assert.equal(result.value, N * PER);
+      assert.equal(result.stats.hits, 1, 'the warmed counter was invalidated');
+      assert.equal(result.stats.misses, 2);
+    }
   } finally {
     await Promise.all(workers.map((w) => w.stop()));
   }
@@ -183,20 +206,136 @@ void test('clear from primary invalidates L1 in all workers', { timeout: 15_000 
   try {
     await a.send('set', { options: opts, key: 'k1', value: 'v1' });
     await a.send('set', { options: opts, key: 'k2', value: 'v2' });
-    // B reads - populates L1 on B
-    await b.send('get', { options: opts, key: 'k1' });
-    await b.send('get', { options: opts, key: 'k2' });
-    // Primary clears
+    await b.send('openLocal', opts);
+    const read = (key: string) =>
+      b.send<{ value?: string; stats: L1Stats }>('readLocal', { namespace: opts.namespace, key });
+    assert.equal((await read('k1')).value, 'v1');
+    assert.equal((await read('k2')).value, 'v2');
+    assert.equal((await read('k1')).stats.hits, 1);
+    assert.equal((await read('k2')).stats.size, 2);
     const primaryCache = new LRUCacheClustered({ namespace: 'l1-clear-all' });
     await primaryCache.clear();
-    // Let the broadcast propagate.
-    await new Promise((r) => setTimeout(r, 100));
-    // B re-reads - both should miss L1 AND miss L2 (cleared).
-    const r1 = await b.send('get', { options: opts, key: 'k1' });
-    const r2 = await b.send('get', { options: opts, key: 'k2' });
-    assert.equal(r1, undefined);
-    assert.equal(r2, undefined);
+    assert.equal((await b.send<L1Stats>('statsLocal', { namespace: opts.namespace })).size, 0);
+    assert.equal((await read('k1')).value, undefined);
+    assert.equal((await read('k2')).value, undefined);
   } finally {
     await Promise.all([a.stop(), b.stop()]);
+  }
+});
+
+for (const serialization of ['json', 'advanced'] as const) {
+  void test(
+    `L1 mGet uses one IPC request and warms the retained instance (${serialization})`,
+    { timeout: 15000 },
+    async () => {
+      const namespace = `l1-batch-${serialization}`;
+      const primary = new LRUCacheClustered<string, number>({ namespace, max: 10 });
+      await primary.mSet([
+        ['a', 1],
+        ['b', 2, { ttl: 60000 }],
+      ]);
+      setupHarness();
+      cluster.setupPrimary({ serialization });
+      const worker = await forkWorker();
+      try {
+        await worker.send('openLocal', { namespace, localL1: { experimental: true, ttl: 5000 } });
+        const operations: string[] = [];
+        worker.worker.on('message', (message: { source?: string; op?: string }) => {
+          if (message.source === SOURCE && message.op) operations.push(message.op);
+        });
+        const args = { namespace, keys: ['b', 'missing', 'a'] };
+        const cold = await worker.send<{ value: unknown; stats: L1Stats }>('mGetLocal', args);
+        assert.deepEqual(cold.value, [
+          ['b', 2],
+          ['missing', serialization === 'json' ? null : undefined],
+          ['a', 1],
+        ]);
+        assert.equal(cold.stats.size, 2);
+        assert.deepEqual(operations, ['mGet']);
+        operations.length = 0;
+        const hot = await worker.send<{ value: unknown; stats: L1Stats }>('mGetLocal', { namespace, keys: ['a', 'b'] });
+        assert.deepEqual(hot.value, [
+          ['a', 1],
+          ['b', 2],
+        ]);
+        assert.equal(hot.stats.hits, 2);
+        assert.deepEqual(operations, []);
+      } finally {
+        await worker.stop();
+      }
+    },
+  );
+}
+
+void test('a cold fetch claims and stores in two IPC requests, then hits L1', { timeout: 15000 }, async () => {
+  const namespace = 'fetch-ipc-count';
+  setupHarness();
+  const worker = await forkWorker();
+  try {
+    await worker.send('openLocal', { namespace, max: 10, localL1: { experimental: true } });
+    const ops: string[] = [];
+    worker.worker.on('message', (message: { source?: string; op?: string }) => {
+      if (message.source === SOURCE && message.op) ops.push(message.op);
+    });
+    const args = { namespace, key: 'k' };
+    const first = await worker.send<{ value: number; stats: L1Stats }>('fetchLocal', args);
+    assert.equal(first.value, 42);
+    assert.equal(first.stats.size, 1);
+    assert.deepEqual(ops, ['fetchClaim', 'fetchStore']);
+    ops.length = 0;
+    const hot = await worker.send<{ value: number; stats: L1Stats }>('fetchLocal', args);
+    assert.equal(hot.value, 42);
+    assert.equal(hot.stats.hits, 1);
+    assert.deepEqual(ops, []);
+  } finally {
+    await worker.stop();
+  }
+});
+
+void test('fetch followers poll once per cycle and populate L1 from the claim result', { timeout: 15000 }, async () => {
+  const namespace = 'fetch-follower-ipc-count';
+  const primary = new LRUCacheClustered<string, number>({ namespace, max: 10 });
+  setupHarness();
+  const worker = await forkWorker();
+  let release!: () => void;
+  let enter!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const leader = primary.fetch('k', async () => {
+    enter();
+    await gate;
+    return 7;
+  });
+  try {
+    await started;
+    await worker.send('openLocal', { namespace, max: 10, localL1: { experimental: true } });
+    const ops: string[] = [];
+    worker.worker.on('message', (message: { source?: string; op?: string }) => {
+      if (message.source !== SOURCE || !message.op) return;
+      ops.push(message.op);
+      if (ops.filter((op) => op === 'fetchClaim').length === 3) release();
+    });
+    const result = await worker.send<{ value: number; stats: L1Stats }>('fetchLocal', { namespace, key: 'k' });
+    assert.equal(result.value, 7, 'reuse the primary leader, not the worker fetcher');
+    assert.equal(await leader, 7);
+    assert.ok(ops.length >= 3, 'exercise multiple follower polls');
+    assert.ok(
+      ops.every((op) => op === 'fetchClaim'),
+      `redundant requests: ${ops.join(', ')}`,
+    );
+    assert.equal(result.stats.size, 1);
+    ops.length = 0;
+    const hot = await worker.send<{ value: number; stats: L1Stats }>('fetchLocal', { namespace, key: 'k' });
+    assert.equal(hot.value, 7);
+    assert.equal(hot.stats.hits, 1);
+    assert.deepEqual(ops, []);
+  } finally {
+    release();
+    await leader;
+    await worker.stop();
   }
 });

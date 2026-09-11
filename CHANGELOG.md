@@ -1,3 +1,16 @@
+# 2.1.1 / 2026-09-11
+
+- Update eleven direct dependencies within their existing major versions. Enforce a seven-day minimum release age for future pnpm resolution; verify all resolved versions against npm publication timestamps.
+- Treat expired keys as absent in `setIfAbsent()`, `incr()`, and `decr()` even with `allowStale` enabled, so counters start a new TTL window.
+- Preserve local LRU order and TTL on `peek()` and `has()`; `has()` no longer reports a stale local entry as present.
+- Reduce cold `fetch()` from three IPC requests to two, and follower polling from two requests per cycle to one. Followers now populate L1 from the claim response.
+- Fix false IPC failures under backpressure and handle asynchronous send errors. Queued mutations are sent once and wait for their response.
+- Validate nested IPC error causes so malformed or cyclic payloads cannot crash a worker.
+- Keep hot L1 entries within the primary expiration deadline, including when local sliding TTL or stale reads are enabled.
+- Return remaining TTLs with cache values, reducing a cold L1 batch read from one request plus a TTL request per value to one request total.
+- Support `mGet()` batches larger than JavaScript's argument limit and avoid copying fully warm batch results.
+- Strengthen L1 race and cross-worker invalidation tests to exercise retained, warm instances. Replace timeout-based fuzz checks with valid-response checks and verify exact errors.
+
 # 2.1.0 / 2026-05-03
 
 ## Features

@@ -14,6 +14,7 @@ type RequestBase = {
   namespace: string;
   source: Source;
   cacheOptions?: SerializableLruOptions;
+  includeTTL?: boolean;
 };
 
 export type Request = RequestBase &
@@ -67,9 +68,11 @@ type SerializedError = {
   cause?: SerializedError;
 };
 
+// TTLs align with the requested keys. null represents Infinity on JSON IPC.
+export type DispatchResult<T> = { value: T; version: number; ttls?: Array<number | null> };
+
 export type Response = { id: string; source: Source } & (
-  | { ok: true; value: unknown; version?: number }
-  | { ok: false; error: SerializedError }
+  { ok: true; value: unknown; version?: number; ttls?: Array<number | null> } | { ok: false; error: SerializedError }
 );
 
 // Subset of LRUCache.Options that survives IPC structured-clone — no functions.

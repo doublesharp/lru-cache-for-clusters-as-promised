@@ -15,6 +15,7 @@ export type L1Stats = {
 type L1Envelope<V> = {
   value: V;
   version: number;
+  expiresAt?: number;
   key: unknown;
 };
 
@@ -124,26 +125,34 @@ export class LocalL1Cache<V extends {} = {}> {
     this.#cache = new LRUCache(lruOpts);
   }
 
-  get(encodedKey: string, eventKey: unknown = encodedKey): V | undefined {
+  get(encodedKey: string, eventKey: unknown = encodedKey, mode: 'get' | 'peek' | 'has' = 'get'): V | undefined {
     const status: { returnedStale?: true } = {};
-    const entry = this.#cache.get(encodedKey, { status });
+    const entry =
+      mode === 'get'
+        ? this.#cache.get(encodedKey, { status })
+        : this.#cache.peek(encodedKey, { allowStale: mode === 'has' ? false : this.#cache.allowStale });
+    if (mode === 'peek' && entry && this.#cache.getRemainingTTL(encodedKey) < 0) status.returnedStale = true;
     if (!entry) {
       this.#stats.misses += 1;
       this.#emit('miss', { key: eventKey });
       return undefined;
     }
-    if (status.returnedStale) {
-      this.#stats.staleHits += 1;
-      this.#emit('stale-hit', { key: entry.key });
-    }
-    if (entry.version < this.#latestSeen) {
-      // Stamped before the latest invalidation; drop it.
+    if (
+      entry.version < this.#latestSeen ||
+      (entry.expiresAt !== undefined && globalThis.performance.now() >= entry.expiresAt)
+    ) {
+      // Neither a local sliding TTL nor allowStale may extend the primary's
+      // expiration deadline or revive a value invalidated by a write.
       this.#cache.delete(encodedKey);
       this.#stats.misses += 1;
       this.#stats.staleHits += 1;
       this.#emit('stale-hit', { key: entry.key });
       this.#emit('miss', { key: eventKey });
       return undefined;
+    }
+    if (status.returnedStale) {
+      this.#stats.staleHits += 1;
+      this.#emit('stale-hit', { key: entry.key });
     }
     this.#stats.hits += 1;
     this.#stats.ipcAvoided += 1;
@@ -158,7 +167,8 @@ export class LocalL1Cache<V extends {} = {}> {
     }
     const setOpts = this.#setOptions(ttl);
     if (setOpts === false) return;
-    this.#cache.set(encodedKey, { value, version, key: eventKey }, setOpts);
+    const expiresAt = ttl !== undefined && Number.isFinite(ttl) ? globalThis.performance.now() + ttl : undefined;
+    this.#cache.set(encodedKey, { value, version, expiresAt, key: eventKey }, setOpts);
     this.#stats.sets += 1;
     this.#emit('set', { key: eventKey, version });
   }

@@ -126,35 +126,37 @@ void test('sendToPrimary rejects and cleans up when process.send throws', async 
   assert.doesNotThrow(() => listeners[0]?.({ id: '1', source: SOURCE, ok: true, value: 'late' }));
 });
 
-void test('sendToPrimary rejects on backpressure when failsafe=reject', async () => {
+for (const failsafe of ['reject', 'resolve'] as const) {
+  void test(`sendToPrimary waits for a queued response under backpressure (${failsafe})`, async () => {
+    const fake = makeFakeProcess();
+    const client = createIpcClient({
+      send(msg) {
+        fake.send(msg);
+        return false;
+      },
+      on: fake.on.bind(fake),
+    });
+    const result = client.sendToPrimary({ namespace: 'n', timeout: 1000, failsafe }, { op: 'incr', key: 'k' });
+    const sent = fake.sent[0] as { id: string };
+    fake.deliver({ id: sent.id, source: SOURCE, ok: true, value: 1 });
+    assert.equal(await result, 1);
+    assert.equal(fake.sent.length, 1, 'a queued mutation must not be retried');
+  });
+}
+
+void test('sendToPrimary rejects asynchronous send failures without waiting for timeout', async () => {
+  const fake = makeFakeProcess();
   const client = createIpcClient({
-    // proc.send returning false signals IPC channel backpressure; the
-    // message is dropped and no response will ever arrive.
-    send() {
+    send(_msg, callback) {
+      globalThis.queueMicrotask(() => callback(new Error('channel closed')));
       return false;
     },
-    on() {},
+    on: fake.on.bind(fake),
   });
-
   await assert.rejects(
-    client.sendToPrimary({ namespace: 'n', timeout: 1000, failsafe: 'reject' }, { op: 'get', key: 'k' }),
-    /IPC backpressure/,
+    client.sendToPrimary({ namespace: 'n', timeout: 1000, failsafe: 'resolve' }, { op: 'get', key: 'k' }),
+    /channel closed/,
   );
-});
-
-void test('sendToPrimary resolves undefined on backpressure when failsafe=resolve', async () => {
-  const client = createIpcClient({
-    send() {
-      return false;
-    },
-    on() {},
-  });
-
-  const result = await client.sendToPrimary(
-    { namespace: 'n', timeout: 1000, failsafe: 'resolve' },
-    { op: 'get', key: 'k' },
-  );
-  assert.equal(result, undefined);
 });
 
 void test('sendToPrimary wraps non-Error process.send throws', async () => {
@@ -367,4 +369,25 @@ void test('subscribeInvalidations swallows throwing handlers and keeps deliverin
     listener?.({ source: 'lcfcap', push: 'l1:invalidate', namespace: 'users', key: 'k', version: 42 });
   });
   assert.equal(got.length, 1);
+});
+
+void test('malformed nested error causes cannot crash or consume the pending response', async () => {
+  const fake = makeFakeProcess();
+  const client = createIpcClient(fake);
+  const p = client.sendToPrimary({ namespace: 'n', timeout: 1000, failsafe: 'reject' }, { op: 'get', key: 'k' });
+  const sent = fake.sent[0] as { id: string };
+  const cycle: { name: string; message: string; cause?: unknown } = { name: 'Error', message: 'cycle' };
+  cycle.cause = cycle;
+  for (const cause of [null, 42, {}, { name: 'Error' }, cycle]) {
+    assert.doesNotThrow(() =>
+      fake.deliver({
+        id: sent.id,
+        source: SOURCE,
+        ok: false,
+        error: { name: 'Error', message: 'bad cause', cause },
+      } as Response),
+    );
+  }
+  fake.deliver({ id: sent.id, source: SOURCE, ok: true, value: 'still pending' });
+  assert.equal(await p, 'still pending');
 });

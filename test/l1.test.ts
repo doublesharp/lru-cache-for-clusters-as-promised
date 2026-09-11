@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LocalL1Cache, encodeL1Key } from '../src/l1.ts';
@@ -232,4 +233,65 @@ void test('fetch with bypassL1 forces a primary read but still single-flights', 
   );
   assert.equal(v, 1);
   assert.equal(calls, 1); // L2 hit, no second fetcher call
+});
+
+for (const allowStale of [false, true]) {
+  void test(`hot L1 entries cannot outlive the primary TTL (allowStale=${allowStale})`, (t) => {
+    let now = 1000;
+    t.mock.method(performance, 'now', () => now);
+    const l1 = new LocalL1Cache({ max: 10, ttl: 1000, updateAgeOnGet: true, allowStale });
+    l1.set('s:a', 'v', 1, 100);
+    now += 60;
+    assert.equal(l1.get('s:a'), 'v');
+    now += 60;
+    assert.equal(l1.get('s:a'), undefined, 'local hits must not renew the primary expiration');
+    assert.equal(l1.stats().size, 0);
+  });
+}
+
+void test('an expired primary deadline counts one stale hit with allowStale', (t) => {
+  let now = 1000;
+  t.mock.method(performance, 'now', () => now);
+  const staleEvents: unknown[] = [];
+  const l1 = new LocalL1Cache({
+    max: 10,
+    ttl: 1000,
+    allowStale: true,
+    emit: (event, payload) => {
+      if (event === 'stale-hit') staleEvents.push(payload);
+    },
+  });
+  l1.set('s:a', 'v', 1, 100);
+  now += 120;
+  assert.equal(l1.get('s:a'), undefined);
+  assert.equal(l1.stats().staleHits, 1);
+  assert.equal(staleEvents.length, 1);
+});
+
+for (const mode of ['get', 'peek', 'has'] as const) {
+  void test(`local ${mode} ${mode === 'get' ? 'refreshes' : 'preserves'} sliding TTL`, async (t) => {
+    let now = 1000;
+    t.mock.method(performance, 'now', () => now);
+    const l1 = new LocalL1Cache({ max: 10, ttl: 100, updateAgeOnGet: true });
+    l1.set('s:a', 'v', 1);
+    now += 60;
+    assert.equal(l1.get('s:a', 'a', mode), 'v');
+    // Let lru-cache's short cached clock expire before advancing mock time.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    now += 60;
+    assert.equal(l1.get('s:a', 'a', mode), mode === 'get' ? 'v' : undefined);
+  });
+}
+
+void test('local peek can return stale without deleting the entry or treating it as present', (t) => {
+  let now = 1000;
+  t.mock.method(performance, 'now', () => now);
+  const l1 = new LocalL1Cache({ max: 10, ttl: 100, allowStale: true });
+  l1.set('s:a', 'v', 1);
+  now += 200;
+  assert.equal(l1.get('s:a', 'a', 'peek'), 'v');
+  assert.equal(l1.stats().staleHits, 1);
+  assert.equal(l1.stats().size, 1, 'peek must not delete stale entries');
+  assert.equal(l1.get('s:a', 'a', 'has'), undefined);
+  assert.equal(l1.stats().hits, 1);
 });

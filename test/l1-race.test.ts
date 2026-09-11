@@ -2,26 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LRUCacheClustered } from '../src/index.ts';
 
-void test('invalidation arriving before response: stale entry rejected by version check', async () => {
-  // In primary mode, dispatchAndBroadcast is sync, so we can't naturally race.
-  // Simulate: read produces value+version V1, then we manually advance latestSeen
-  // *before* the L1.set call would simulate landing. Easiest model: directly
-  // drive the public API and confirm convergence.
-  const c = new LRUCacheClustered<string, number>({
-    namespace: 'race-1',
+void test('invalidation arriving before a read continuation prevents stale L1 population', async () => {
+  const namespace = 'race-1';
+  const reader = new LRUCacheClustered<string, number>({
+    namespace,
     max: 10,
-    localL1: { enabled: true, experimental: true, ttl: 1000 },
+    localL1: { experimental: true, ttl: 1000 },
   });
-  await c.set('a', 1);
-  // Simulate the race: get is in flight, returns version 5; meanwhile a different
-  // worker did a set that bumped to version 6 and broadcast. We model the
-  // broadcast arriving as invalidateLocal, which advances latestSeen and drops
-  // any stamped-with-old-version L1 entry on the next read.
-  c.invalidateLocal('a');
-  const v = await c.get('a');
-  assert.equal(v, 1);
-  // Subsequent reads stay consistent
-  assert.equal(await c.get('a'), 1);
+  const writer = new LRUCacheClustered<string, number>({ namespace, max: 10 });
+  await writer.set('a', 1);
+  const pending = reader.get('a'); // primary snapshot is 1; continuation has not populated L1
+  const write = writer.set('a', 2); // invalidation arrives before that continuation
+  assert.equal(await pending, 1);
+  await write;
+  assert.equal(reader.localStats()?.size, 0, 'the old response must not repopulate L1');
+  assert.equal(await reader.get('a'), 2);
+  assert.equal(await reader.get('a'), 2);
+  assert.equal(reader.localStats()?.hits, 1);
 });
 
 void test('rapid set/delete/set on same key: final state is the last write', async () => {
@@ -39,7 +36,7 @@ void test('rapid set/delete/set on same key: final state is the last write', asy
   assert.equal(v, 1049);
 });
 
-void test('clear during fetch: in-flight fetcher completes, value either stored or aborted (never stale)', async () => {
+void test('clear during fetch permits the active fetcher to store its result after clear', async () => {
   const c = new LRUCacheClustered<string, number>({
     namespace: 'race-3',
     max: 10,
@@ -61,17 +58,12 @@ void test('clear during fetch: in-flight fetcher completes, value either stored 
   });
 
   await started;
-  // While the fetcher is parked, clear the cache. This bumps the namespace
-  // version and broadcasts a namespace-wide invalidation; the leader's
-  // fetchStore call will either succeed (key reappears post-clear) or have
-  // its lock invalidated (returns false) - both outcomes are non-stale.
   await c.clear();
+  assert.equal(await c.get('k', { bypassL1: true }), undefined);
   releaseFetcher();
-  const v = await p;
-  // The result is either 42 (fetchStore raced past the clear) or undefined
-  // (fetchStore was rejected). The contract: value must not be stale, which
-  // means it must be from the fetcher that we just ran, not a pre-clear value.
-  assert.ok(v === 42 || v === undefined, `unexpected fetch result ${String(v)}`);
+  assert.equal(await p, 42);
+  assert.equal(await c.get('k'), 42);
+  assert.equal(await c.get('k', { bypassL1: true }), 42);
 });
 
 void test('many concurrent sets to same key converge with no zombie L1 entries', async () => {
@@ -82,14 +74,19 @@ void test('many concurrent sets to same key converge with no zombie L1 entries',
   });
   // Seed
   await c.set('k', 0);
+  assert.equal(await c.get('k'), 0);
+  assert.equal(await c.get('k'), 0);
+  assert.equal(c.localStats()?.hits, 1, 'L1 is warm before concurrent writes');
   // Fire 20 concurrent sets
   const writes = Array.from({ length: 20 }, (_, i) => c.set('k', i + 1));
   await Promise.all(writes);
-  // The final value is whichever set lost the race to the primary; we don't
-  // care about the specific value, only that L1 is consistent with L2.
+  // Primary dispatch is synchronous: these writes arrive in array order.
   const fromL1 = await c.get('k');
   const fromL2 = await c.get('k', { bypassL1: true });
-  assert.equal(fromL1, fromL2);
+  assert.equal(fromL1, 20);
+  assert.equal(fromL2, 20);
+  assert.equal(await c.get('k'), 20);
+  assert.equal(c.localStats()?.hits, 2);
 });
 
 void test('concurrent fetch from same instance dedups via inFlight slot', async () => {

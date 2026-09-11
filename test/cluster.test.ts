@@ -514,3 +514,29 @@ void test(
     }
   },
 );
+
+void test(
+  'large worker writes survive real IPC backpressure without duplicate mutations',
+  { timeout: 15000 },
+  async () => {
+    const namespace = 'integration-backpressure';
+    const primary = new LRUCacheClustered<string, string>({ namespace, max: 10 });
+    setupHarnessPrimary();
+    const worker = await forkHarnessWorker();
+    const value = 'x'.repeat(1024 * 1024);
+    try {
+      assert.equal(
+        await worker.send('set', {
+          options: { namespace, timeout: 5000, failsafe: 'reject' },
+          key: 'large',
+          value,
+        }),
+        true,
+      );
+      assert.equal(await primary.get('large'), value);
+      assert.equal((await primary.stats()).sets, 1);
+    } finally {
+      await worker.stop();
+    }
+  },
+);

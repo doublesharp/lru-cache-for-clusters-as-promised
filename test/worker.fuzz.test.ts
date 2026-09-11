@@ -74,20 +74,32 @@ function randAny(): unknown {
 
 void test('property: arbitrary inbound messages never crash the worker', async () => {
   for (let i = 0; i < NUM_RUNS; i++) {
-    const raw = randAny();
     const fake = makeFakeProcess();
     const client = createIpcClient({
       send: fake.send.bind(fake),
       on: fake.on.bind(fake),
     });
-    const p = client.sendToPrimary({ namespace: 'fuzz', timeout: 25, failsafe: 'resolve' }, { op: 'get', key: 'k' });
+    const p = client.sendToPrimary({ namespace: 'fuzz', timeout: 1000, failsafe: 'reject' }, { op: 'get', key: 'k' });
+    const sent = fake.sent[0] as { id: string };
+    // Exercise validation after the routing fields match, not only junk that
+    // exits at the first source/id check.
+    const raw =
+      i % 2 === 0
+        ? randAny()
+        : {
+            id: sent.id,
+            source: SOURCE,
+            ok: false,
+            error: { name: 'Error', message: 'malformed', cause: pick([null, 42, {}, { message: 'no name' }]) },
+          };
     try {
       fake.deliver(raw);
     } catch (e) {
       assert.fail(`deliver threw: ${String(e)}`);
     }
+    fake.deliver({ id: (fake.sent[0] as { id: string }).id, source: SOURCE, ok: true, value: 'valid response' });
     const result = await p;
-    assert.equal(result, undefined);
+    assert.equal(result, 'valid response', 'invalid input must leave the request pending');
   }
 });
 
@@ -102,11 +114,12 @@ void test('property: foreign-source messages are ignored even with matching id',
       send: fake.send.bind(fake),
       on: fake.on.bind(fake),
     });
-    const p = client.sendToPrimary({ namespace: 'fuzz', timeout: 25, failsafe: 'resolve' }, { op: 'get', key: 'k' });
+    const p = client.sendToPrimary({ namespace: 'fuzz', timeout: 1000, failsafe: 'reject' }, { op: 'get', key: 'k' });
     const sent = fake.sent[0] as { id: string };
     fake.deliver({ id: sent.id, source: foreignSource, ok: true, value });
+    fake.deliver({ id: (fake.sent[0] as { id: string }).id, source: SOURCE, ok: true, value: 'valid response' });
     const result = await p;
-    assert.equal(result, undefined);
+    assert.equal(result, 'valid response', 'invalid input must leave the request pending');
   }
 });
 
@@ -143,7 +156,12 @@ void test('property: matching error response with arbitrary string rejects', asy
       ok: false,
       error: { name: 'Error', message: errMsg },
     });
-    await assert.rejects(p);
+    await assert.rejects(p, (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.name, 'Error');
+      assert.equal(error.message, errMsg, 'must reject the supplied error, not an IPC timeout');
+      return true;
+    });
   }
 });
 
@@ -154,12 +172,13 @@ void test('property: stale id never delivers to a different request', async () =
       send: fake.send.bind(fake),
       on: fake.on.bind(fake),
     });
-    const p = client.sendToPrimary({ namespace: 'fuzz', timeout: 25, failsafe: 'resolve' }, { op: 'get', key: 'k' });
+    const p = client.sendToPrimary({ namespace: 'fuzz', timeout: 1000, failsafe: 'reject' }, { op: 'get', key: 'k' });
     const real = (fake.sent[0] as { id: string }).id;
     let staleId = randStr();
     while (staleId === real) staleId = randStr();
     fake.deliver({ id: staleId, source: SOURCE, ok: true, value: 'wrong' });
+    fake.deliver({ id: (fake.sent[0] as { id: string }).id, source: SOURCE, ok: true, value: 'valid response' });
     const result = await p;
-    assert.equal(result, undefined);
+    assert.equal(result, 'valid response', 'invalid input must leave the request pending');
   }
 });

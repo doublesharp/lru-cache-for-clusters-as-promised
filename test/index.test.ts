@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LRUCacheClustered } from '../src/index.ts';
@@ -435,73 +436,51 @@ void test('fetch dedups concurrent calls and caches result', async () => {
   assert.equal(calls, 1);
 });
 
-void test('fetch shares a single miss-path get across concurrent callers', async () => {
-  caches.clear();
+void test('fetch concurrent callers share one primary miss and one stored result', async () => {
   const cache = new LRUCacheClustered<string, number>({ namespace: 'fetch-get-dedup', max: 10 });
-  let getCalls = 0;
-  let fetchCalls = 0;
-
-  (cache as { get: (key: string) => Promise<number | undefined> }).get = async () => {
-    getCalls += 1;
-    await new Promise((r) => setTimeout(r, 10));
-    return undefined;
-  };
-
-  const fetcher = async () => {
-    fetchCalls += 1;
+  let calls = 0;
+  const fetcher = () => {
+    calls++;
     return 7;
   };
-
-  const results = await Promise.all([cache.fetch('k', fetcher), cache.fetch('k', fetcher), cache.fetch('k', fetcher)]);
-  assert.deepEqual(results, [7, 7, 7]);
-  assert.equal(getCalls, 1);
-  assert.equal(fetchCalls, 1);
+  assert.deepEqual(
+    await Promise.all([cache.fetch('k', fetcher), cache.fetch('k', fetcher), cache.fetch('k', fetcher)]),
+    [7, 7, 7],
+  );
+  assert.equal(calls, 1);
+  const stats = await cache.stats();
+  assert.equal(stats.misses, 1);
+  assert.equal(stats.sets, 1);
 });
 
-void test('fetch followers in another instance reuse the leader result', async () => {
-  caches.clear();
+void test('fetch followers in another instance reuse the leader result and warm their L1', async () => {
   const namespace = 'fetch-cross-instance-follower';
   const leaderCache = new LRUCacheClustered<string, string>({ namespace, max: 10 });
-  const followerCache = new LRUCacheClustered<string, string>({ namespace, max: 10 });
-  const originalPeek = followerCache.peek.bind(followerCache);
-  let releaseLeader!: () => void;
-  let leaderEntered!: () => void;
-  let followerObservedMiss!: () => void;
-  let leader!: Promise<string>;
-  let followerPeekCalls = 0;
-  const leaderGate = new Promise<void>((resolve) => {
-    releaseLeader = resolve;
+  const followerCache = new LRUCacheClustered<string, string>({ namespace, max: 10, localL1: { experimental: true } });
+  let release!: () => void;
+  let enter!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
   });
-  const leaderStarted = new Promise<void>((resolve) => {
-    leaderEntered = resolve;
+  const started = new Promise<void>((resolve) => {
+    enter = resolve;
   });
-  const followerMissed = new Promise<void>((resolve) => {
-    followerObservedMiss = resolve;
-  });
-  (followerCache as { peek: (key: string) => Promise<string | undefined> }).peek = async (key) => {
-    followerPeekCalls += 1;
-    if (followerPeekCalls === 1) {
-      followerObservedMiss();
-      return undefined;
-    }
-    releaseLeader();
-    await leader;
-    return originalPeek(key);
-  };
-
-  leader = leaderCache.fetch('k', async () => {
-    leaderEntered();
-    await leaderGate;
+  const leader = leaderCache.fetch('k', async () => {
+    enter();
+    await gate;
     return 'shared';
   });
-  await leaderStarted;
-
+  await started;
   const follower = followerCache.fetch('k', () => {
     throw new Error('follower should not run fetcher');
   });
-  await followerMissed;
-
+  // Dispatch is synchronous in primary mode, so the follower has claimed
+  // while the leader is still parked, before releasing this gate.
+  release();
   assert.deepEqual(await Promise.all([leader, follower]), ['shared', 'shared']);
+  assert.equal(followerCache.localStats()!.size, 1);
+  assert.equal(await followerCache.fetch('k', () => 'wrong'), 'shared');
+  assert.equal(followerCache.localStats()!.hits, 1);
 });
 
 void test('fetch with forceRefresh re-invokes fetcher', async () => {
@@ -1453,7 +1432,7 @@ void test('localL1 ttl-only mode ignores same-process broadcast invalidations', 
   assert.equal(await reader.get('a', { bypassL1: true }), 2);
 });
 
-void test('off() removes a listener', () => {
+void test('off() removes a listener', async () => {
   const c = new LRUCacheClustered<string, number>({
     namespace: 'l1-off-evt',
     max: 10,
@@ -1466,7 +1445,7 @@ void test('off() removes a listener', () => {
   c.on('l1:miss', handler);
   c.off('l1:miss', handler);
   // Trigger a miss
-  void c.get('nope').catch(() => {});
+  await c.get('nope');
   assert.equal(count, 0);
 });
 
@@ -1486,32 +1465,33 @@ void test('once() registers a one-shot listener', async () => {
   assert.equal(count, 1);
 });
 
-void test('L1 population is skipped when remaining primary ttl cannot be read', async () => {
+void test('L1 population accounts for time spent awaiting a read response', async (t) => {
+  let now = 1000;
+  t.mock.method(performance, 'now', () => now);
   const c = new LRUCacheClustered<string, number>({
-    namespace: 'l1-remaining-ttl-error',
+    namespace: 'l1-response-expiration',
     max: 10,
-    localL1: { enabled: true, experimental: true, ttl: 1000 },
+    localL1: { experimental: true, ttl: 1000 },
   });
-  await c.set('a', 1);
-  c.getRemainingTTL = async () => {
-    throw new Error('ttl failed');
-  };
-
-  assert.equal(await c.get('a'), 1);
-  assert.equal(c.localStats()?.size, 0);
+  await c.set('a', 1, { ttl: 100 });
+  const read = c.get('a');
+  now += 200;
+  assert.equal(await read, 1, 'the read returns its original snapshot');
+  assert.equal(c.localStats()?.size, 0, 'an already expired snapshot must not populate L1');
 });
 
-void test('L1 population is skipped when remaining primary ttl is unavailable', async () => {
+void test('L1 population preserves an unbounded primary TTL', async () => {
   const c = new LRUCacheClustered<string, number>({
-    namespace: 'l1-remaining-ttl-undefined',
+    namespace: 'l1-no-primary-expiration',
     max: 10,
-    localL1: { enabled: true, experimental: true, ttl: 1000 },
+    localL1: { experimental: true, ttl: 1000 },
   });
   await c.set('a', 1);
-  c.getRemainingTTL = async () => undefined as unknown as number;
-
+  assert.equal(await c.getRemainingTTL('a'), Infinity);
   assert.equal(await c.get('a'), 1);
-  assert.equal(c.localStats()?.size, 0);
+  assert.equal(c.localStats()?.size, 1);
+  assert.equal(await c.get('a'), 1);
+  assert.equal(c.localStats()?.hits, 1);
 });
 
 void test('localL1 enabled without experimental: true throws', () => {
@@ -1533,4 +1513,120 @@ void test('localL1 enabled with experimental: true works', () => {
     localL1: { enabled: true, experimental: true, ttl: 1000 },
   });
   assert.notEqual(c.localStats(), undefined);
+});
+
+void test('mGet handles batches larger than the JavaScript argument limit', async () => {
+  const cache = new LRUCacheClustered<number, number>({ namespace: 'large-mget', max: 10 });
+  await cache.set(199999, 42);
+  const keys = Array.from({ length: 200000 }, (_, i) => i);
+  const result = await cache.mGet(keys);
+  assert.equal(result.size, keys.length);
+  assert.equal(result.get(199999), 42);
+  assert.equal(result.has(0), true);
+  assert.equal(result.get(0), undefined);
+});
+
+void test('L1 batch population needs no follow-up TTL requests', async () => {
+  const cache = new LRUCacheClustered<string, number>({
+    namespace: 'mget-one-request',
+    max: 10,
+    localL1: { experimental: true, ttl: 1000 },
+  });
+  await cache.mSet([
+    ['a', 1],
+    ['b', 2],
+  ]);
+  let ttlRequests = 0;
+  const original = cache.getRemainingTTL.bind(cache);
+  cache.getRemainingTTL = (key) => {
+    ttlRequests++;
+    return original(key);
+  };
+  assert.deepEqual(
+    [...(await cache.mGet(['a', 'missing', 'b']))],
+    [
+      ['a', 1],
+      ['missing', undefined],
+      ['b', 2],
+    ],
+  );
+  assert.equal(cache.localStats()?.size, 2);
+  assert.equal(ttlRequests, 0);
+});
+
+void test('setIfAbsent replaces expired entries even when allowStale is enabled', async (t) => {
+  let now = 1000;
+  t.mock.method(performance, 'now', () => now);
+  const cache = new LRUCacheClustered<string, string>({ namespace: 'stale-set-if-absent', max: 10, allowStale: true });
+  await cache.set('key', 'expired', { ttl: 100 });
+  now += 200;
+  assert.equal(await cache.setIfAbsent('key', 'replacement', { ttl: 1000 }), true);
+  assert.equal(await cache.get('key'), 'replacement');
+});
+
+for (const method of ['incr', 'decr'] as const) {
+  void test(`${method} starts a new window after expiry with allowStale enabled`, async (t) => {
+    let now = 1000;
+    t.mock.method(performance, 'now', () => now);
+    const cache = new LRUCacheClustered<string, number>({ namespace: `stale-${method}`, max: 10, allowStale: true });
+    await cache.set('counter', 50, { ttl: 100 });
+    now += 200;
+    assert.equal(await cache[method]('counter', 1, { ttl: 1000 }), method === 'incr' ? 1 : -1);
+    assert.equal(await cache.getRemainingTTL('counter'), 1000);
+  });
+}
+
+void test('L1 peek preserves local recency so it does not evict another hot key', async () => {
+  const cache = new LRUCacheClustered<string, number>({
+    namespace: 'local-peek-recency',
+    max: 10,
+    localL1: { experimental: true, max: 2 },
+  });
+  await cache.mSet([
+    ['a', 1],
+    ['b', 2],
+    ['c', 3],
+  ]);
+  await cache.get('a');
+  await cache.get('b');
+  assert.equal(await cache.peek('a'), 1);
+  await cache.get('c');
+  const before = cache.localStats()!.hits;
+  assert.equal(await cache.get('b'), 2);
+  assert.equal(cache.localStats()!.hits, before + 1, 'peek(a) must not make b the eviction victim');
+});
+
+void test('L1 has never reports a stale entry as present', async (t) => {
+  let now = 1000;
+  t.mock.method(performance, 'now', () => now);
+  const cache = new LRUCacheClustered<string, number>({
+    namespace: 'local-has-stale',
+    max: 10,
+    localL1: { experimental: true, ttl: 100, allowStale: true, invalidation: 'ttl-only' },
+  });
+  await cache.set('a', 1, { updateL1: true });
+  cache.getCache()!.delete('a'); // TTL-only L1 receives no invalidation
+  now += 200;
+  assert.equal(await cache.has('a'), false);
+  assert.equal(cache.localStats()!.hits, 0);
+});
+
+void test('L1 has preserves local recency', async () => {
+  const cache = new LRUCacheClustered<string, number>({
+    namespace: 'local-has-recency',
+    max: 10,
+    localL1: { experimental: true, max: 2 },
+  });
+  await cache.mSet([
+    ['a', 1],
+    ['b', 2],
+    ['c', 3],
+  ]);
+  await cache.get('a');
+  await cache.get('b');
+  assert.equal(await cache.has('a'), true);
+  await cache.get('c');
+  const before = cache.localStats()!.hits;
+  assert.equal(await cache.get('b'), 2);
+  assert.equal(cache.localStats()!.hits, before + 1);
 });

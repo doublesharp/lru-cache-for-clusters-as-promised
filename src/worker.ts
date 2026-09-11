@@ -7,6 +7,7 @@ import {
   isInvalidationPush,
   type InvalidationPush,
   type Request,
+  type DispatchResult,
   type Response,
 } from './messages.js';
 
@@ -26,7 +27,7 @@ type SendOptions = {
 };
 
 type ProcessLike = {
-  send: (msg: unknown) => boolean | void;
+  send: (msg: unknown, callback: (error: Error | null) => void) => boolean | void;
   on: (event: 'message', cb: (msg: unknown) => void) => void;
 };
 
@@ -38,10 +39,7 @@ type InvalidationHandler = (msg: InvalidationPush) => void;
 
 interface IpcClient {
   sendToPrimary: <T = unknown>(opts: SendOptions, payload: RequestPayload) => Promise<T>;
-  sendToPrimaryWithMeta: <T = unknown>(
-    opts: SendOptions,
-    payload: RequestPayload,
-  ) => Promise<{ value: T; version: number }>;
+  sendToPrimaryWithMeta: <T = unknown>(opts: SendOptions, payload: RequestPayload) => Promise<DispatchResult<T>>;
   subscribeInvalidations: (namespace: string, handler: InvalidationHandler) => () => void;
 }
 
@@ -71,7 +69,7 @@ export function createIpcClient(proc: ProcessLike): IpcClient {
     }
   });
 
-  function send<T>(opts: SendOptions, payload: RequestPayload): Promise<{ value: T; version: number }> {
+  function send<T>(opts: SendOptions, payload: RequestPayload): Promise<DispatchResult<T>> {
     const id = String(++nextRequestId);
     const request = { id, namespace: opts.namespace, source: SOURCE, ...payload } as Request;
 
@@ -84,24 +82,25 @@ export function createIpcClient(proc: ProcessLike): IpcClient {
 
       callbacks.set(id, (response) => {
         clearTimeout(timer);
-        if (response.ok) resolve({ value: response.value as T, version: response.version ?? 0 });
+        if (response.ok)
+          resolve({
+            value: response.value as T,
+            version: response.version ?? 0,
+            ttls: response.ttls,
+          });
         else reject(deserializeError(response.error));
       });
 
       messagesDebug('worker -> primary', request);
       try {
-        // proc.send returns false when the IPC channel is full
-        // (backpressure). The message is silently dropped, so the response
-        // would never arrive and the caller would block until the timeout
-        // fires. Fast-fail here so backpressure surfaces immediately under
-        // the configured failsafe.
-        const sent = proc.send(request);
-        if (sent === false) {
+        // A false return means the channel is congested, not that the message
+        // was dropped. Keep waiting for its response; only the send callback
+        // can report delivery failure. Retrying here could duplicate mutations.
+        proc.send(request, (error) => {
+          if (!error || !callbacks.delete(id)) return;
           clearTimeout(timer);
-          callbacks.delete(id);
-          if (opts.failsafe === 'reject') reject(new Error('IPC backpressure'));
-          else resolve({ value: undefined as T, version: 0 });
-        }
+          reject(error);
+        });
       } catch (error) {
         clearTimeout(timer);
         callbacks.delete(id);
@@ -147,14 +146,21 @@ function isOurResponse(value: unknown): value is Response {
   // malformed error from a misbehaving primary would crash the message
   // listener in deserializeError(undefined) and take the worker down.
   if ((value as { ok: boolean }).ok === false) {
-    const error = (value as { error?: unknown }).error;
-    if (
-      typeof error !== 'object' ||
-      error === null ||
-      typeof (error as { name?: unknown }).name !== 'string' ||
-      typeof (error as { message?: unknown }).message !== 'string'
-    ) {
-      return false;
+    let error: unknown = (value as { error?: unknown }).error;
+    // serializeError emits at most eight causes plus the root. Bound the
+    // entire chain, including cycles, before recursive reconstruction.
+    for (let depth = 0; ; depth++) {
+      if (
+        depth > 8 ||
+        typeof error !== 'object' ||
+        error === null ||
+        typeof (error as { name?: unknown }).name !== 'string' ||
+        typeof (error as { message?: unknown }).message !== 'string'
+      ) {
+        return false;
+      }
+      error = (error as { cause?: unknown }).cause;
+      if (error === undefined) break;
     }
   }
   return true;
@@ -175,7 +181,7 @@ export function getDefaultClient(): IpcClient {
     }
     const send = process.send.bind(process);
     cachedDefaultClient = createIpcClient({
-      send: (msg) => send(msg),
+      send: (msg, callback) => send(msg, callback),
       on: (event, cb) => process.on(event, cb),
     });
   }

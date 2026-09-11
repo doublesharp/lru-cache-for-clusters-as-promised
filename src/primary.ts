@@ -7,6 +7,7 @@ import {
   SOURCE,
   serializeError,
   type Request,
+  type DispatchResult,
   type Response,
   type SerializableLruOptions,
   type Stats,
@@ -282,7 +283,7 @@ export function dispatchOp(namespace: string, payload: ExecPayload, context: Dis
       // peek() instead of has() so updateAgeOnHas does not extend the
       // existing entry's TTL on a no-op setIfAbsent. Cache values are
       // non-nullish, so undefined unambiguously means "not present".
-      if (cache.peek(key) !== undefined) return false;
+      if (cache.peek(key, { allowStale: false }) !== undefined) return false;
       cache.set(
         key,
         requireNonNullish('cache value', payload.value),
@@ -394,7 +395,7 @@ export function dispatchOp(namespace: string, payload: ExecPayload, context: Dis
       // do not refresh the entry's age before the noUpdateTTL set below.
       // Otherwise the rate-limiter "ttl on first write only" semantics
       // would silently extend the original window on every increment.
-      const current = cache.peek(key);
+      const current = cache.peek(key, { allowStale: false });
       const existed = current !== undefined;
       const base = typeof current === 'number' ? current : 0;
       const delta = (payload.amount ?? 1) * (payload.op === 'decr' ? -1 : 1);
@@ -420,12 +421,16 @@ export function dispatchOp(namespace: string, payload: ExecPayload, context: Dis
     case 'fetchClaim': {
       const cache = getCacheForPayload(namespace, payload);
       const key = requireNonNullish('cache key', payload.key);
-      const locks = getFetchNamespaceLocks(namespace);
       const now = Date.now();
       if (!payload.forceRefresh) {
         const value = cache.get(key);
-        if (value !== undefined) return { kind: 'value', value };
-        const existing = locks.get(key);
+        const s = getStats(namespace);
+        if (value !== undefined) {
+          s.hits += 1;
+          return { kind: 'value', value };
+        }
+        s.misses += 1;
+        const existing = fetchLocks.get(namespace)?.get(key);
         // Treat a stale lock as gone, so a new caller can take leadership
         // and unstick followers when a previous leader hung without exiting.
         if (existing && now - existing.claimedAt < FETCH_LEASE_MS) {
@@ -433,7 +438,7 @@ export function dispatchOp(namespace: string, payload: ExecPayload, context: Dis
         }
       }
       const token = `fetch-${++primaryState.nextFetchToken}`;
-      locks.set(key, { token, ownerWorkerId: context.workerId, claimedAt: now });
+      getFetchNamespaceLocks(namespace).set(key, { token, ownerWorkerId: context.workerId, claimedAt: now });
       return { kind: 'leader', token };
     }
     case 'fetchStore': {
@@ -506,7 +511,7 @@ export function dispatchOp(namespace: string, payload: ExecPayload, context: Dis
 
 // Bulk ops broadcast a namespace-wide invalidate; single-key ops broadcast the
 // specific key. Reasoning in spec section 5.3.
-const BULK_BROADCAST_OPS = new Set([
+export const BULK_BROADCAST_OPS: ReadonlySet<string> = new Set([
   'destroy',
   'clear',
   'purgeStale',
@@ -515,10 +520,10 @@ const BULK_BROADCAST_OPS = new Set([
   'load',
   'max',
   'ttl',
-] as const);
+]);
 
 function buildInvalidation(namespace: string, payload: ExecPayload, version: number): InvalidationPush | undefined {
-  if ((BULK_BROADCAST_OPS as Set<string>).has(payload.op)) {
+  if (BULK_BROADCAST_OPS.has(payload.op)) {
     return { source: SOURCE, push: 'l1:invalidate-namespace', namespace, version };
   }
   // Single-key mutating ops carry `key`. Read ops don't reach here because
@@ -544,7 +549,7 @@ export function dispatchAndBroadcast(
   namespace: string,
   payload: ExecPayload,
   context: DispatchContext = {},
-): { value: unknown; version: number } {
+): DispatchResult<unknown> {
   const before = getNamespaceVersion(namespace);
   const value = dispatchOp(namespace, payload, context);
   const after = getNamespaceVersion(namespace);
@@ -552,7 +557,16 @@ export function dispatchAndBroadcast(
     const msg = buildInvalidation(namespace, payload, after);
     if (msg) broadcastInvalidation(msg);
   }
-  return { value, version: after };
+  const result: DispatchResult<unknown> = { value, version: after };
+  if (payload.includeTTL) {
+    const keys = payload.op === 'mGet' ? payload.keys : 'key' in payload ? [payload.key] : [];
+    const cache = caches.get(namespace);
+    result.ttls = keys.map((key) => {
+      const ttl = cache?.getRemainingTTL(requireNonNullish('cache key', key)) ?? 0;
+      return Number.isFinite(ttl) ? ttl : null;
+    });
+  }
+  return result;
 }
 
 export function handleRequest(request: Request, context: DispatchContext = {}): Response {
@@ -568,16 +582,13 @@ export function handleRequest(request: Request, context: DispatchContext = {}): 
     return err(request, 'invalid request: missing required fields');
   }
   try {
-    const { value } = dispatchAndBroadcast(request.namespace, request, context);
-    return ok(request, value, getNamespaceVersion(request.namespace));
+    const result = dispatchAndBroadcast(request.namespace, request, context);
+    return { id: request.id, source: SOURCE, ok: true, ...result };
   } catch (e) {
     return err(request, e);
   }
 }
 
-function ok(request: Request, value: unknown, version: number): Response {
-  return { id: request.id, source: SOURCE, ok: true, value, version };
-}
 function err(request: unknown, cause: unknown): Response {
   const id =
     typeof request === 'object' && request !== null && typeof (request as { id?: unknown }).id === 'string'

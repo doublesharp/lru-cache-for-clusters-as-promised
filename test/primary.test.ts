@@ -1476,3 +1476,28 @@ void test('dispatchAndBroadcast tolerates a missing worker registry', async () =
     (cluster as unknown as { workers: Record<string, unknown> | undefined }).workers = original;
   }
 });
+
+void test('read responses include TTLs from the same primary snapshot when requested', () => {
+  const namespace = 'read-ttl-snapshot';
+  const cache = getOrCreateCache(namespace, { max: 10 });
+  cache.set('finite', 'v', { ttl: 60_000 });
+  cache.set('unbounded', 'w');
+  const response = handleRequest({
+    id: 'ttl-snapshot',
+    source: SOURCE,
+    namespace,
+    op: 'mGet',
+    keys: ['finite', 'unbounded', 'missing'],
+    includeTTL: true,
+  });
+  assert.equal(response.ok, true);
+  assert.deepEqual(response.value, [
+    ['finite', 'v'],
+    ['unbounded', 'w'],
+    ['missing', undefined],
+  ]);
+  assert.ok(response.ttls);
+  assert.ok(typeof response.ttls[0] === 'number' && response.ttls[0] > 0 && response.ttls[0] <= 60_000);
+  assert.equal(response.ttls[1], null, 'unbounded TTL must survive JSON serialization');
+  assert.equal(response.ttls[2], 0);
+});

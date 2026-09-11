@@ -46,8 +46,33 @@ function serializeError(error: unknown) {
 // `{}` is the public generic constraint on V (matches lru-cache@11). Disabled
 // for the whole switch since several cases coerce raw IPC payloads through.
 /* eslint-disable @typescript-eslint/no-empty-object-type */
+const localCaches = new Map<string, LRUCacheClustered<string, {}>>();
+
 async function handleCommand(cmd: string, args: unknown): Promise<unknown> {
   switch (cmd) {
+    case 'openLocal': {
+      const options = args as ConstructorParameters<typeof LRUCacheClustered>[0];
+      const cache = await LRUCacheClustered.getInstance<string, {}>(options);
+      localCaches.set(cache.namespace, cache);
+      return cache.localStats();
+    }
+    case 'fetchLocal':
+    case 'readLocal':
+    case 'mGetLocal':
+    case 'statsLocal': {
+      const { namespace, key, keys } = args as { namespace: string; key: string; keys: string[] };
+      const cache = localCaches.get(namespace);
+      if (!cache) throw new Error(`local cache not opened: ${namespace}`);
+      if (cmd === 'statsLocal') return cache.localStats();
+      const value =
+        cmd === 'fetchLocal'
+          ? await cache.fetch(key, () => 42)
+          : cmd === 'readLocal'
+            ? await cache.get(key)
+            : [...(await cache.mGet(keys))];
+      return { value, stats: cache.localStats() };
+    }
+
     case 'set': {
       const { options, key, value, ttl } = args as {
         options: ConstructorParameters<typeof LRUCacheClustered>[0];

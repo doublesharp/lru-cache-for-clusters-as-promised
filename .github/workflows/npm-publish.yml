@@ -19,7 +19,7 @@ jobs:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@12.0.2
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run typecheck

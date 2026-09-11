@@ -129,6 +129,12 @@ const products = new LRUCacheClustered<string, Product>({
 
 In v2.1, set `experimental: true` to opt in. The L1 TTL is capped at the primary TTL; if omitted, it defaults to `min(primaryTtl * 0.1, 5000)` with a 100 ms floor.
 
+Reuse one cache instance per namespace in each worker. Each constructor or `getInstance()` call creates a separate local L1, so recreating the instance per request loses its warm entries.
+
+A cold `fetch()` claims the key and stores the result in two IPC requests. Followers poll the claim once per cycle and reuse the leader's result.
+
+L1 misses receive values and remaining TTLs in one primary response. A cold `mGet()` uses one IPC request for the batch, and a fully warm batch uses none. Local hits cannot extend an entry past the primary expiration recorded in that response, even with `updateAgeOnGet` or `allowStale` enabled.
+
 Read paths can bypass L1 per call:
 
 ```ts
@@ -356,7 +362,7 @@ await getUser('42'); // second call: cached
 
 Both `memoize()` and `cache.fetch()` coordinate through the primary so concurrent misses for the same key collapse to one in-flight fetch across instances and workers.
 
-Passing `forceRefresh: true` skips both the cache lookup and any in-flight claim and starts a fresh leader fetch. Concurrent callers without `forceRefresh` still wait on whichever fetch is in flight and reuse its result. Passing `bypassL1: true` skips local L1 reads and population for that call while preserving the primary-side single-flight behavior.
+Passing `forceRefresh: true` skips both the cache lookup and any in-flight claim and starts a fresh leader fetch. On a cache miss, concurrent callers without `forceRefresh` wait on the current fetch and reuse its result. During a forced refresh, other instances can still read an existing cached value until the refresh finishes. Passing `bypassL1: true` skips local L1 reads and population for that call while preserving the primary-side single-flight behavior.
 
 The cache `timeout` option only bounds each worker IPC request. It does not cancel user fetcher work after a worker owns the primary-side single-flight lock, so production fetchers should enforce their own upstream timeout or abort policy.
 
